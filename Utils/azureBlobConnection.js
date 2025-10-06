@@ -41,10 +41,15 @@ const fecthDatafromBlog = async(blobPath) =>{
         downloadFile.readableStreamBody.pipe(csv())
 		.on("data", (data) => {
 			result.push(data);
-			console.log('CSV row processed, total rows:', result.length);
+			// console.log('CSV row processed, total rows:', result.length);
 		})
 		.on("end", () => {
-			console.log('CSV parsing completed successfully. Total rows:', result.length);
+			// console.log('CSV parsing completed successfully. Total rows:', result.length);
+			if (result.length > 0) {
+				console.log('Last parsed row:', result[result.length - 1]);
+			} else {
+				console.log('No rows parsed.');
+			}
 			resolve(result);
 		})
 		.on("error", (err) => {

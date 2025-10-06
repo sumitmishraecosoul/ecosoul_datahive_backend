@@ -9,9 +9,15 @@ const QUICKCOMM_FILE = 'Ecosoul-quickcomm_invoice_SD.csv';
 function buildBlobPath(filename) {
 	const base = process.env.AZURE_BLOB_PATH || '';
 	if (!base) return filename;
-	// If base already includes the filename, return as-is
-	if (base.endsWith(filename) || base.endsWith(`/${filename}`)) return base;
-	const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+
+	// If base already ends with a CSV file, strip the filename to keep only the directory
+	const baseIsFile = /\.csv$/i.test(base);
+	const dirOnly = baseIsFile ? base.replace(/\/[^/]*$/, '') : base; // remove last segment
+
+	// If after normalization it already ends with our target filename, return as-is
+	if (dirOnly.endsWith(filename) || dirOnly.endsWith(`/${filename}`)) return dirOnly;
+
+	const normalizedBase = dirOnly.endsWith('/') ? dirOnly : `${dirOnly}/`;
 	return `${normalizedBase}${filename}`;
 }
 
@@ -139,7 +145,9 @@ scQuickCommerce.getMetricTableData = async (req, res) => {
 		let rows;
 		try {
 			// Use Supply Chain file specifically for this API
-			rows = await azureClient.fecthDatafromBlog(scQuickCommerce.getSupplyChainBlobPath());
+			const supplyPath = scQuickCommerce.getSupplyChainBlobPath();
+			console.log('SupplyChain blobPath:', supplyPath);
+			rows = await azureClient.fecthDatafromBlog(supplyPath);
 		} catch (e) {
 			return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: e.message });
 		}
@@ -167,6 +175,17 @@ scQuickCommerce.getMetricTableData = async (req, res) => {
 		return res.status(200).json(items);
 	} catch (error) {
 		return res.status(500).json({ message: 'Error computing metric table data', error: error.message });
+	}
+};
+
+scQuickCommerce.getQuickCommMetricTableData = async (req, res) => {
+	try {
+		const quickPath = scQuickCommerce.getQuickCommBlobPath();
+		console.log('QuickComm blobPath:', quickPath);
+		const rows = await azureClient.fecthDatafromBlog(quickPath);
+		return res.status(200).json(rows);
+	} catch (error) {
+		return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
 	}
 };
 

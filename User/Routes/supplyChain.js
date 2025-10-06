@@ -77,4 +77,33 @@ const router = express.Router();
  */
 router.get('/quick-commerce/metrics', scQuickCommerce.getMetricTableData);
 
+/**
+ * @swagger
+ * /supply-chain/quick-commerce/metric-card-data:
+ *   get:
+ *     tags:
+ *       - Quick Commerce
+ *     summary: Get Quick Commerce metric card data
+ *     description: >
+ *       Returns Quick Commerce metric card data from the Azure Blob CSV file.
+ *     responses:
+ *       200:
+ *         description: Metric card data fetched successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               - metric: "Total Sales"
+ *                 value: 1000
+ *               - metric: "Total Orders"
+ *                 value: 100
+ *       500:
+ *         description: Error fetching metric card data
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Error fetching metric card data"
+ *               error: "Internal server error details"
+ */
+router.get('/quick-commerce/metric-card-data', scQuickCommerce.getQuickCommMetricTableData);
+
 export default router;
