@@ -2,6 +2,23 @@ import azureClient from '../../Utils/azureBlobConnection.js';
 
 const scQuickCommerce = {};
 
+// Filenames in the same blob/container
+const SUPPLY_CHAIN_FILE = 'Ecosoul-inventory_Supply_chain.csv';
+const QUICKCOMM_FILE = 'Ecosoul-quickcomm_invoice_SD.csv';
+
+function buildBlobPath(filename) {
+	const base = process.env.AZURE_BLOB_PATH || '';
+	if (!base) return filename;
+	// If base already includes the filename, return as-is
+	if (base.endsWith(filename) || base.endsWith(`/${filename}`)) return base;
+	const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+	return `${normalizedBase}${filename}`;
+}
+
+// Expose helpers for future APIs in this controller
+scQuickCommerce.getSupplyChainBlobPath = () => buildBlobPath(SUPPLY_CHAIN_FILE);
+scQuickCommerce.getQuickCommBlobPath = () => buildBlobPath(QUICKCOMM_FILE);
+
 // Hardcoded columns and groups expected by frontend
 const METRIC_COLUMNS = [
 	'3G', 'Updike', 'Shipcube-East', 'Shipcube-West',
@@ -121,7 +138,8 @@ scQuickCommerce.getMetricTableData = async (req, res) => {
 		// Acquire data strictly from Azure Blob CSV
 		let rows;
 		try {
-			rows = await azureClient.fecthDatafromBlog();
+			// Use Supply Chain file specifically for this API
+			rows = await azureClient.fecthDatafromBlog(scQuickCommerce.getSupplyChainBlobPath());
 		} catch (e) {
 			return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: e.message });
 		}
