@@ -83,27 +83,84 @@ router.get('/quick-commerce/metrics', scQuickCommerce.getMetricTableData);
  *   get:
  *     tags:
  *       - Quick Commerce
- *     summary: Get Quick Commerce metric card data
+ *     summary: Compute quick commerce stock metrics
  *     description: >
- *       Returns Quick Commerce metric card data from the Azure Blob CSV file.
+ *       Fetches data from Azure Blob Storage, processes inventory-related metrics such as surplus, shortage, sellable stock, and various quantity totals.
+ *       The response provides overall summaries including SKU count, location count, and aggregate quantities.
+ *     parameters:
+ *       - in: query
+ *         name: (none)
+ *         schema:
+ *           type: object
+ *           description: No query parameters are accepted for this endpoint; data intake is server-side from Azure Blob Storage.
  *     responses:
  *       200:
- *         description: Metric card data fetched successfully
+ *         description: Quick commerce metrics computed successfully
  *         content:
  *           application/json:
- *             example:
- *               - metric: "Total Sales"
- *                 value: 1000
- *               - metric: "Total Orders"
- *                 value: 100
+ *             examples:
+ *               success:
+ *                 summary: All metrics summary
+ *                 value:
+ *                   sku: "ALL"
+ *                   location: "ALL"
+ *                   stockStatus: "ALL"
+ *                   metrics:
+ *                     totalSkuCount: 150
+ *                     totalLocationCount: 10
+ *                     surplusQty: 300
+ *                     shortageQty: 20
+ *                     totalSellable: 5000
+ *                     totalInvoiceQty: 4500
+ *                     totalIntransitQty: 600
+ *                     totalWarehouseQty: 700
+ *                     totalDeliveredQty: 4300
+ *                   metadata:
+ *                     asOf: "2025-10-06T00:00:00Z"
  *       500:
- *         description: Error fetching metric card data
+ *         description: Error in computing quick commerce metrics
  *         content:
  *           application/json:
  *             example:
- *               message: "Error fetching metric card data"
- *               error: "Internal server error details"
+ *               message: "Error computing quick commerce metrics"
+ *               error: "Detailed error message"
  */
-router.get('/quick-commerce/metric-card-data', scQuickCommerce.getQuickCommMetricTableData);
+router.get('/quick-commerce/metric-card-data', scQuickCommerce.getQuickCommerceMetrics);
+
+/**
+ * @swagger
+ * /supply-chain/quick-commerce/data:
+ *   get:
+ *     tags:
+ *       - Quick Commerce
+ *     summary: Get full Quick Commerce dataset (parsed)
+ *     description: Returns the entire parsed contents of the Quick Commerce CSV as an array of rows.
+ *     responses:
+ *       200:
+ *         description: Parsed rows fetched successfully
+ *         content:
+ *           application/json:
+ *             examples:
+ *               sample:
+ *                 summary: Example parsed rows
+ *                 value:
+ *                   - {
+ *                       "SKU": "PLP8SQ10",
+ *                       "Box/Case": "20.0",
+ *                       "Location": "Unnamed: 9",
+ *                       "Warehouse Qty": "0.0",
+ *                       "Delivered": "0.0"
+ *                     }
+ *                   - {
+ *                       "SKU": "PLP8SQ11",
+ *                       "Box/Case": "12.0",
+ *                       "Location": "Amazon-USA",
+ *                       "Warehouse Qty": "15.0",
+ *                       "Delivered": "3.0"
+ *                     }
+ *       500:
+ *         description: Error fetching parsed dataset
+ */
+router.get('/quick-commerce/data', scQuickCommerce.getQuickCommMetricTableData);
 
 export default router;

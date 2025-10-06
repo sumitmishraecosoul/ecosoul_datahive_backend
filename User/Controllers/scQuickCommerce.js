@@ -189,4 +189,68 @@ scQuickCommerce.getQuickCommMetricTableData = async (req, res) => {
 	}
 };
 
+// Consolidated metric card data for Quick Commerce
+scQuickCommerce.getQuickCommerceMetrics = async (req, res) => {
+	try {
+		const quickPath = scQuickCommerce.getQuickCommBlobPath();
+		console.log('QuickComm metrics blobPath:', quickPath);
+		let rows = await azureClient.fecthDatafromBlog(quickPath);
+		if (!Array.isArray(rows)) rows = [];
+
+		const toNum = (v) => {
+			if (v === null || v === undefined) return 0;
+			const n = parseFloat(String(v).toString().replace(/,/g, '').trim());
+			return Number.isFinite(n) ? n : 0;
+		};
+
+		// Exact column names to consolidate from the Quick Commerce CSV
+		const NUMERIC_COLUMNS = [
+			'Box/Case',
+			'Warehouse Qty',
+			'Delivered',
+			'In-Transit',
+			'Invoiced_Qty',
+			'Sellable(In Hand)',
+			'MTQ',
+			'Active PO Qty',
+			'SLA Days',
+			'Inward Qty',
+			'Required Qty',
+			'Sellable after Required Qty'
+		];
+
+		const totalsByColumn = Object.fromEntries(NUMERIC_COLUMNS.map(c => [c, 0]));
+		const skuSet = new Set();
+
+		for (const row of rows) {
+			const flat = flattenObject(row);
+			const sku = flat['SKU'] ?? flat['sku'] ?? flat['Sku'];
+			if (sku !== undefined && String(sku).trim() !== '') skuSet.add(String(sku).trim());
+			for (const col of NUMERIC_COLUMNS) {
+				let value = flat[col];
+				// be tolerant to a few common header variants without changing output keys
+				if (value === undefined) {
+					const variants = [
+						col.replace(/\s+/g, ' ').trim(),
+						col.replace(/\s+/g, '_'),
+						col.replace(/\s+/g, ''),
+						col.toLowerCase()
+					];
+					for (const v of variants) {
+						if (Object.prototype.hasOwnProperty.call(flat, v)) { value = flat[v]; break; }
+					}
+				}
+				totalsByColumn[col] += toNum(value);
+			}
+		}
+
+		return res.status(200).json({
+			'Total SKU Count': skuSet.size,
+			...totalsByColumn
+		});
+	} catch (error) {
+		return res.status(500).json({ message: 'Error computing quick commerce metrics', error: error.message });
+	}
+};
+
 export default scQuickCommerce;
