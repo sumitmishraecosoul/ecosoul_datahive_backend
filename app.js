@@ -4,6 +4,7 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import { swaggerUi, swaggerSpec } from './swagger.js';
 import inventoryRoutes from './User/Routes/inventoryRoutes.js';
 import demandRoutes from './User/Routes/demandRoutes.js';
+import supplyChainRoutes from './User/Routes/supplyChain.js';
 import cors from 'cors';
 
 dotenv.config();
@@ -22,6 +23,7 @@ app.use(cors(
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/inventory', inventoryRoutes);
 app.use('/demand', demandRoutes);
+app.use('/supply-chain', supplyChainRoutes);
 
 app.get('/', (req, res) => {
     res.send(`<h1 style="color: #000; font-size: 24px; font-weight: bold; text-align: center;">Thrive Dashboard Backend API</h1>`);
