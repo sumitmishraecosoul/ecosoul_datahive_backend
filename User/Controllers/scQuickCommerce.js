@@ -1,4 +1,7 @@
 import azureClient from '../../Utils/azureBlobConnection.js';
+import { BlobServiceClient } from '@azure/storage-blob';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const scQuickCommerce = {};
 
@@ -24,6 +27,22 @@ function buildBlobPath(filename) {
 // Expose helpers for future APIs in this controller
 scQuickCommerce.getSupplyChainBlobPath = () => buildBlobPath(SUPPLY_CHAIN_FILE);
 scQuickCommerce.getQuickCommBlobPath = () => buildBlobPath(QUICKCOMM_FILE);
+
+// Azure Storage connection for downloads
+const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_CONNECTION_STRING;
+const containerName = process.env.AZURE_CONTAINER_NAME;
+
+// Helper function to get blob stream for downloads
+const getBlobStream = async (filename) => {
+	const blobPath = buildBlobPath(filename);
+	const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+	
+	// Use the container name from environment variables and the full blob path
+	const containerClient = blobServiceClient.getContainerClient(containerName);
+	const blockBlobClient = containerClient.getBlockBlobClient(blobPath);
+	
+	return blockBlobClient.download(0);
+};
 
 // Hardcoded columns and groups expected by frontend
 const METRIC_COLUMNS = [
@@ -178,6 +197,43 @@ scQuickCommerce.getMetricTableData = async (req, res) => {
 	}
 };
 
+scQuickCommerce.getSCOverviewMetricTableData = async (req, res) => {
+	try {
+		const supplyPath = scQuickCommerce.getSupplyChainBlobPath();
+		console.log('SupplyChain blobPath:', supplyPath);
+		const rows = await azureClient.fecthDatafromBlog(supplyPath);
+		
+		// Filter to only return specified fields
+		const filteredRows = rows.map(row => {
+			const filteredRow = {};
+			
+			// Always include these core fields
+			if (row.SKU !== undefined) filteredRow.SKU = row.SKU;
+			if (row.Channel !== undefined) filteredRow.Channel = row.Channel;
+			if (row.Material !== undefined) filteredRow.Material = row.Material;
+			if (row['Box / Case'] !== undefined) filteredRow['Box / Case'] = row['Box / Case'];
+			
+			// Include metric fields
+			const metricFields = [
+				'Amazon-USA', 'Shipcube-East', 'Updike', '3G', 'Walmart', 'Shipcube-West',
+				'Easy Ecom', 'Flipkart', 'AWD-Units', 'Shipcube-East_Instransit', 'Shipcube-West_Intransit'
+			];
+			
+			metricFields.forEach(field => {
+				if (row[field] !== undefined) {
+					filteredRow[field] = row[field];
+				}
+			});
+			
+			return filteredRow;
+		});
+		
+		return res.status(200).json(filteredRows);
+	} catch (error) {
+		return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+	}
+};
+
 scQuickCommerce.getQuickCommMetricTableData = async (req, res) => {
 	try {
 		const quickPath = scQuickCommerce.getQuickCommBlobPath();
@@ -196,6 +252,40 @@ scQuickCommerce.getQuickCommerceMetrics = async (req, res) => {
 		console.log('QuickComm metrics blobPath:', quickPath);
 		let rows = await azureClient.fecthDatafromBlog(quickPath);
 		if (!Array.isArray(rows)) rows = [];
+
+		// Optional filter by comma-separated SKU list from query param
+		const skuParam = req.query && typeof req.query.sku !== 'undefined' ? String(req.query.sku) : '';
+		const hasSkuFilter = skuParam.trim() !== '';
+		if (hasSkuFilter) {
+			const allowedSkus = new Set(
+				skuParam
+					.split(',')
+					.map(s => s.trim())
+					.filter(Boolean)
+			);
+			rows = rows.filter(row => {
+				const flat = flattenObject(row);
+				const sku = flat['SKU'] ?? flat['sku'] ?? flat['Sku'];
+				return sku !== undefined && allowedSkus.has(String(sku).trim());
+			});
+		}
+
+		// Optional filter by comma-separated Location list from query param
+		const locationParam = req.query && typeof req.query.location !== 'undefined' ? String(req.query.location) : '';
+		const hasLocationFilter = locationParam.trim() !== '';
+		if (hasLocationFilter) {
+			const allowedLocations = new Set(
+				locationParam
+					.split(',')
+					.map(s => s.trim())
+					.filter(Boolean)
+			);
+			rows = rows.filter(row => {
+				const flat = flattenObject(row);
+				const loc = flat['Location'] ?? flat['location'] ?? flat['Loc'] ?? flat['loc'];
+				return loc !== undefined && allowedLocations.has(String(loc).trim());
+			});
+		}
 
 		const toNum = (v) => {
 			if (v === null || v === undefined) return 0;
@@ -250,6 +340,31 @@ scQuickCommerce.getQuickCommerceMetrics = async (req, res) => {
 		});
 	} catch (error) {
 		return res.status(500).json({ message: 'Error computing quick commerce metrics', error: error.message });
+	}
+};
+
+// Download API endpoints
+scQuickCommerce.downloadSCOverviewCSV = async (req, res) => {
+	try {
+		const blobDownload = await getBlobStream(SUPPLY_CHAIN_FILE);
+		res.setHeader('Content-Disposition', `attachment; filename="${SUPPLY_CHAIN_FILE}"`);
+		res.setHeader('Content-Type', 'text/csv');
+		blobDownload.readableStreamBody.pipe(res);
+	} catch (error) {
+		console.error('Error downloading Supply Chain CSV:', error);
+		res.status(404).send('File not found');
+	}
+};
+
+scQuickCommerce.downloadSCQuickCommerceCSV = async (req, res) => {
+	try {
+		const blobDownload = await getBlobStream(QUICKCOMM_FILE);
+		res.setHeader('Content-Disposition', `attachment; filename="${QUICKCOMM_FILE}"`);
+		res.setHeader('Content-Type', 'text/csv');
+		blobDownload.readableStreamBody.pipe(res);
+	} catch (error) {
+		console.error('Error downloading Quick Commerce CSV:', error);
+		res.status(404).send('File not found');
 	}
 };
 
