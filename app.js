@@ -6,6 +6,7 @@ import inventoryRoutes from './User/Routes/inventoryRoutes.js';
 import demandRoutes from './User/Routes/demandRoutes.js';
 import supplyChainRoutes from './User/Routes/supplyChain.js';
 import cors from 'cors';
+import ecommerceRoutes from './User/Routes/eCommerce.js';
 
 dotenv.config();
 
@@ -13,8 +14,8 @@ const app = express();
 app.use(express.json());
 app.use(cors(
     {
-        origin: 'https://worklytics.thrivebrands.ai',
-		// origin: 'http://localhost:5052',
+        // origin: 'https://worklytics.thrivebrands.ai',
+		origin: 'http://localhost:5052',
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: true
@@ -25,6 +26,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/inventory', inventoryRoutes);
 app.use('/demand', demandRoutes);
 app.use('/supply-chain', supplyChainRoutes);
+app.use('/ecommerce', ecommerceRoutes);
 
 app.get('/', (req, res) => {
     res.send(`<h1 style="color: #000; font-size: 24px; font-weight: bold; text-align: center;">Thrive Dashboard Backend API</h1>`);
