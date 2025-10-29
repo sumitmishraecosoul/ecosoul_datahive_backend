@@ -14,7 +14,7 @@ const app = express();
 app.use(express.json());
 app.use(cors(
     {
-        origin: 'https://worklytics.thrivebrands.ai',
+        origin: 'https://datahive.vectoraistudio.com',
 		// origin: 'http://localhost:5052',
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
         allowedHeaders: ['Content-Type', 'Authorization'],
