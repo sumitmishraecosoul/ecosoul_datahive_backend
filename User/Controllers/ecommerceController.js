@@ -132,36 +132,42 @@ ecommerceController.getEcommerceOverviewMetricTableData = async (req, res) => {
 		// Apply common filters (sku, material, country, monthYear w/ default prev month)
 		rows = applyCommonFilters(rows, req.query || {});
 
-		const allowedFields = [
-			'SKU',
-			'Country',
-			'Month-Year',
-			'Demand',
-			'ADS',
-			'Exp_RoundUP_30_Days_Sales',
-			'last_30_Sale_Quantity',
-			'Total incoming',
-			'Expected Date',
-			'Net_Sellable',
-			'Opening_Balance_with_inbound',
-			'Demand_fulfillable',
-			'Demand_fulfillable_with_inbound',
-			'Instock_rate_base',
-			'Alert',
-			'Sale_Lost'
-		];
+		// Map desired output keys to source CSV headers
+		const mapping = {
+			'Country': 'Country',
+			'Year Month': 'Month-Year',
+			'SKU': 'SKU',
+			'Status': 'Status',
+			'Demand': 'Demand',
+			'Last 30 day sale qty': 'last_30_Sale_Quantity',
+			'MTD sale': 'Sale_Quantity',
+			'Forecasted Sale': 'Expected_30_Days_Sales',
+			'On hand Amazon WH': 'afn-fulfillable-quantity',
+			'AWD': 'AWD',
+			'AWD-Intransit': 'AWD-Intransit',
+			'Net Sellable': 'Net_Sellable',
+			'Demand Fulfillable': 'Demand_fulfillable',
+			'Instock Rate': 'Instock_rate_base',
+			'Alert': 'Alert',
+			'Incoming Date': 'Expected Date',
+			'Total Incoming': 'Total incoming',
+			'OB with Inbound': 'Opening_Balance_with_inbound'
+		};
 
-		const filteredRows = rows.map(row => {
-			const filtered = {};
-			for (const key of allowedFields) {
-				if (Object.prototype.hasOwnProperty.call(row, key)) {
-					filtered[key] = row[key];
+		const transformed = rows.map(orig => {
+			const flat = orig; // rows are already flat objects from CSV parser
+			const out = {};
+			for (const [outKey, srcKey] of Object.entries(mapping)) {
+				if (Object.prototype.hasOwnProperty.call(flat, srcKey)) {
+					out[outKey] = flat[srcKey];
+				} else {
+					out[outKey] = undefined;
 				}
 			}
-			return filtered;
+			return out;
 		});
 
-		return res.status(200).json(filteredRows);
+		return res.status(200).json(transformed);
 	} catch (error) {
 		return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
 	}
