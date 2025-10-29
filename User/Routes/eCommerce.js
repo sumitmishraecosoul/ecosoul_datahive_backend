@@ -257,5 +257,67 @@ router.get('/overview/metric-card-data', ecommerceController.getEcommerceOvervie
  */
 router.get('/overview/demand-instock-by-geography', ecommerceController.getDemandInstockByGeographyData);
 
+/**
+ * @swagger
+ * /ecommerce/overview/alert-count-by-geography:
+ *   get:
+ *     tags:
+ *       - Ecommerce
+ *     summary: Get alert count by geography data for the Ecommerce Overview dataset.
+ *     description: Returns the alert count by geography data for the Ecommerce Overview dataset.
+ *     responses:
+ *       200:
+ *         description: Alert count by geography data fetched successfully
+ *         content:
+ *           application/json:
+ *             examples:
+ *               sample:
+ *                 summary: Example alert count by geography data
+ *                 value:
+ *                   - {
+ *                     "Country": "USA",
+ *                     "Alert Count": "10"
+ *                     }
+ *       500:
+ *         description: Error fetching alert count by geography data
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Error fetching alert count by geography data"
+ *               error: "Error message"
+ */
+router.get('/overview/alert-count-by-geography', ecommerceController.getAlertCountByGeographyData);
+
+/**
+ * @swagger
+ * /ecommerce/overview/sku-type-by-geography:
+ *   get:
+ *     tags:
+ *       - Ecommerce
+ *     summary: Get SKU type by geography data for the Ecommerce Overview dataset.
+ *     description: Returns the SKU type by geography data for the Ecommerce Overview dataset.
+ *     responses:
+ *       200:
+ *         description: SKU type by geography data fetched successfully
+ *         content:
+ *           application/json:
+ *             examples:
+ *               sample:
+ *                 summary: Example SKU type by geography data
+ *                 value:
+ *                   - {
+ *                     "Country": "USA",
+ *                     "SKU Type": "Plastic"
+ *                     }
+ *       500:
+ *         description: Error fetching SKU type by geography data
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Error fetching SKU type by geography data"
+ *               error: "Error message"
+ */
+router.get('/overview/sku-type-by-geography', ecommerceController.getSKUTypebyGeographyData);
+
 export default router;
 

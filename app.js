@@ -14,8 +14,8 @@ const app = express();
 app.use(express.json());
 app.use(cors(
     {
-        origin: 'https://worklytics.thrivebrands.ai',
-		// origin: 'http://localhost:5052',
+        // origin: 'https://worklytics.thrivebrands.ai',
+		origin: 'http://localhost:5052',
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: true

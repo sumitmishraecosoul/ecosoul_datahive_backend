@@ -367,5 +367,124 @@ ecommerceController.getDemandInstockByGeographyData = async (req, res) => {
 	}
 };
 
+ecommerceController.getAlertCountByGeographyData = async (req, res) => {
+	try {
+		const supplyPath = ecommerceController.getEcommerceBlobPath();
+		console.log('Ecommerce blobPath (ecommerce):', supplyPath);
+		let rows = await azureClient.fecthDatafromBlog(supplyPath);
+		if (!Array.isArray(rows)) rows = [];
+
+		// Apply common filters (none => return all rows unchanged)
+		rows = applyCommonFilters(rows, req.query || {});
+
+		// Collect distinct countries (ordered)
+		const countrySet = new Set();
+		const flattened = rows.map(r => flattenObject(r));
+		for (const r of flattened) {
+			if (r['Country']) countrySet.add(String(r['Country']).trim());
+		}
+		const countries = Array.from(countrySet);
+		countries.sort((a, b) => a.localeCompare(b));
+
+		// Collect distinct alerts (ordered, case-insensitive stable)
+		const alertSet = new Set();
+		for (const r of flattened) {
+			if (r['Alert']) alertSet.add(String(r['Alert']).trim());
+		}
+		const alerts = Array.from(alertSet);
+		alerts.sort((a, b) => a.localeCompare(b));
+
+		// Initialize data object for each alert label: alert -> { country: count }
+		const seriesMap = new Map();
+		for (const alert of alerts) {
+			const obj = {};
+			for (const c of countries) obj[c] = 0;
+			seriesMap.set(alert, obj);
+		}
+
+		// Count DISTINCT SKUs per (country, alert)
+		const seenSkuKeys = new Set();
+		for (const r of flattened) {
+			const country = r['Country'] ? String(r['Country']).trim() : undefined;
+			const alert = r['Alert'] ? String(r['Alert']).trim() : undefined;
+			const sku = r['SKU'] ? String(r['SKU']).trim() : undefined;
+			if (!country || !alert || !sku) continue;
+			if (!countries.includes(country)) continue;
+			if (!seriesMap.has(alert)) continue;
+			const key = `${alert}||${country}||${sku}`;
+			if (seenSkuKeys.has(key)) continue;
+			seenSkuKeys.add(key);
+			const obj = seriesMap.get(alert);
+			obj[country] = (obj[country] || 0) + 1;
+		}
+
+		const series = alerts.map(alert => ({ Alert: alert, data: seriesMap.get(alert) || {} }));
+
+		return res.status(200).json({ series });
+	} catch (error) {
+		return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+	}
+};
+
+ecommerceController.getSKUTypebyGeographyData = async (req, res) => {
+	try {
+		const supplyPath = ecommerceController.getEcommerceBlobPath();
+		console.log('Ecommerce blobPath (ecommerce):', supplyPath);
+		let rows = await azureClient.fecthDatafromBlog(supplyPath);
+		if (!Array.isArray(rows)) rows = [];
+
+		// Apply common filters (none => return all rows unchanged)
+		rows = applyCommonFilters(rows, req.query || {});
+
+		// Collect distinct countries (ordered)
+		const countrySet = new Set();
+		const flattened = rows.map(r => flattenObject(r));
+		for (const r of flattened) {
+			if (r['Country']) countrySet.add(String(r['Country']).trim());
+		}
+		const countries = Array.from(countrySet);
+		countries.sort((a, b) => a.localeCompare(b));
+
+		// Collect distinct SKU Types (ordered)
+		const typeSet = new Set();
+		for (const r of flattened) {
+			if (r['SKU Type']) typeSet.add(String(r['SKU Type']).trim());
+		}
+		const skuTypes = Array.from(typeSet);
+		skuTypes.sort((a, b) => a.localeCompare(b));
+
+		// Initialize data object for each SKU Type label: type -> { country: count }
+		const seriesMap = new Map();
+		for (const t of skuTypes) {
+			const obj = {};
+			for (const c of countries) obj[c] = 0;
+			seriesMap.set(t, obj);
+		}
+
+		// Count DISTINCT SKUs per (country, SKU Type)
+		const seenSkuKeys = new Set();
+		for (const r of flattened) {
+			const country = r['Country'] ? String(r['Country']).trim() : undefined;
+			const type = r['SKU Type'] ? String(r['SKU Type']).trim() : undefined;
+			const sku = r['SKU'] ? String(r['SKU']).trim() : undefined;
+			if (!country || !type || !sku) continue;
+			if (!countries.includes(country)) continue;
+			if (!seriesMap.has(type)) continue;
+			const key = `${type}||${country}||${sku}`;
+			if (seenSkuKeys.has(key)) continue;
+			seenSkuKeys.add(key);
+			const obj = seriesMap.get(type);
+			obj[country] = (obj[country] || 0) + 1;
+		}
+
+		// Build series: use key name "Alert" as requested, value is the SKU Type
+		const series = skuTypes.map(t => ({ Alert: t, data: seriesMap.get(t) || {} }));
+
+		return res.status(200).json({ series });
+	} catch (error) {
+		return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+	}
+}
+
 export default ecommerceController;
 
