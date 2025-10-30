@@ -91,35 +91,44 @@ function toSet(param) {
 
 // Apply common filters across Ecommerce endpoints
 // Filters: sku, material, country (comma-separated), monthYear (YYYY-MM; defaults to prev month)
-function applyCommonFilters(rows, query) {
-    const skuSet = toSet(query?.sku);
-    const materialSet = toSet(query?.material);
-    const countrySet = toSet(query?.country);
+ function applyCommonFilters(rows, query) {
+     const skuSet = toSet(query?.sku);
+     const materialSet = toSet(query?.material);
+     const countrySet = toSet(query?.country);
+     const alertSet = toSet(query?.alert);
+     const skuTypeSet = toSet(query?.skuType);
+     const statusSet = toSet(query?.status);
 
-    const monthYearRaw = typeof query?.monthYear === 'string' ? query.monthYear.trim() : '';
-    const hasAnyFilter = !!(skuSet || materialSet || countrySet || monthYearRaw);
+     const monthYearRaw = typeof query?.monthYear === 'string' ? query.monthYear.trim() : '';
+     const hasAnyFilter = !!(skuSet || materialSet || countrySet || alertSet || skuTypeSet || statusSet || monthYearRaw);
 
-    // If no filters provided at all, return all rows unchanged
-    if (!hasAnyFilter) return rows;
+     // If no filters provided at all, return all rows unchanged
+     if (!hasAnyFilter) return rows;
 
-    // Apply monthYear only if explicitly provided
-    const monthYear = monthYearRaw || undefined;
+     // Apply monthYear only if explicitly provided
+     const monthYear = monthYearRaw || undefined;
 
-    return rows.filter(row => {
-        const flat = flattenObject(row);
-        const sku = flat['SKU'] ?? flat['sku'] ?? flat['Sku'];
-        const material = flat['Material'] ?? flat['material'];
-        const country = flat['Country'] ?? flat['country'];
-        const monthYearVal = flat['Month-Year'] ?? flat['month-year'] ?? flat['monthYear'];
+     return rows.filter(row => {
+         const flat = flattenObject(row);
+         const sku = flat['SKU'] ?? flat['sku'] ?? flat['Sku'];
+         const material = flat['Material'] ?? flat['material'];
+         const country = flat['Country'] ?? flat['country'];
+         const alert = flat['Alert'] ?? flat['alert'];
+         const skuType = flat['SKU Type'] ?? flat['sku type'] ?? flat['sku_type'] ?? flat['skuType'];
+         const status = flat['Status'] ?? flat['status'];
+         const monthYearVal = flat['Month-Year'] ?? flat['month-year'] ?? flat['monthYear'];
 
-        if (skuSet && (!sku || !skuSet.has(String(sku).trim()))) return false;
-        if (materialSet && (!material || !materialSet.has(String(material).trim()))) return false;
-        if (countrySet && (!country || !countrySet.has(String(country).trim()))) return false;
-        if (monthYear && (!monthYearVal || String(monthYearVal).trim() !== monthYear)) return false;
+         if (skuSet && (!sku || !skuSet.has(String(sku).trim()))) return false;
+         if (materialSet && (!material || !materialSet.has(String(material).trim()))) return false;
+         if (countrySet && (!country || !countrySet.has(String(country).trim()))) return false;
+         if (alertSet && (!alert || !alertSet.has(String(alert).trim()))) return false;
+         if (skuTypeSet && (!skuType || !skuTypeSet.has(String(skuType).trim()))) return false;
+         if (statusSet && (!status || !statusSet.has(String(status).trim()))) return false;
+         if (monthYear && (!monthYearVal || String(monthYearVal).trim() !== monthYear)) return false;
 
-        return true;
-    });
-}
+         return true;
+     });
+ }
 
 
 ecommerceController.getEcommerceOverviewMetricTableData = async (req, res) => {
