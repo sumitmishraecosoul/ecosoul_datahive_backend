@@ -238,7 +238,9 @@ ecommerceController.getEcommerceOverviewMetricCardData = async (req, res) => {
 			'afn-fulfillable-quantity',
 			'Sale_Quantity',
 			'Total incoming',
-			'Sale_Lost'
+			'Sale_Lost',
+			'AWD',
+			'AWD-Intransit',
 		];
 
 		// Map CSV column names to output keys
@@ -247,7 +249,9 @@ ecommerceController.getEcommerceOverviewMetricCardData = async (req, res) => {
 			'afn-fulfillable-quantity': 'afn-fulfillable-quantity',
 			'Sale_Quantity': 'Sale Quantity',
 			'Total incoming': 'Total Incoming',
-			'Sale_Lost': 'Sale Lost'
+			'Sale_Lost': 'Sale Lost',
+			'AWD': 'AWD',
+			'AWD-Intransit': 'AWD-Intransit',
 		};
 
 		const totalsByColumn = Object.fromEntries(Object.values(columnMapping).map(key => [key, 0]));
@@ -377,6 +381,38 @@ ecommerceController.getDemandInstockByGeographyData = async (req, res) => {
 		}
 
 		return res.status(200).json(results);
+	} catch (error) {
+		return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+	}
+};
+
+ecommerceController.getSKUCountByGeographyData = async (req, res) => {
+	try {
+		const supplyPath = ecommerceController.getEcommerceBlobPath();
+		console.log('Ecommerce blobPath (ecommerce):', supplyPath);
+		let rows = await azureClient.fecthDatafromBlog(supplyPath);
+		if (!Array.isArray(rows)) rows = [];
+
+		// Apply common filters (none => return all rows unchanged)
+		rows = applyCommonFilters(rows, req.query || {});
+
+		// Count DISTINCT SKUs per Country
+		const countryToSkuSet = new Map();
+		for (const row of rows) {
+			const flat = flattenObject(row);
+			const country = flat['Country'] ? String(flat['Country']).trim() : undefined;
+			const sku = flat['SKU'] ? String(flat['SKU']).trim() : undefined;
+			if (!country || !sku) continue;
+			if (!countryToSkuSet.has(country)) countryToSkuSet.set(country, new Set());
+			countryToSkuSet.get(country).add(sku);
+		}
+
+		const result = {};
+		for (const [country, skuSet] of countryToSkuSet.entries()) {
+			result[country] = skuSet.size;
+		}
+
+		return res.status(200).json(result);
 	} catch (error) {
 		return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
 	}

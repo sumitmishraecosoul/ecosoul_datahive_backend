@@ -259,6 +259,66 @@ router.get('/overview/demand-instock-by-geography', ecommerceController.getDeman
 
 /**
  * @swagger
+ * /ecommerce/overview/sku-count-by-geography:
+ *   get:
+ *     tags:
+ *       - Ecommerce
+ *     summary: Get SKU count by geography data for the Ecommerce Overview dataset.
+ *     description: Returns the SKU count by geography data for the Ecommerce Overview dataset.
+ *     parameters:
+ *       - in: query
+ *         name: sku
+ *         schema:
+ *           type: string
+ *           example: "PLPB7&10SQ50,PP10PPL"
+ *         required: false
+ *         description: Comma-separated SKUs to include.
+ *       - in: query
+ *         name: material
+ *         schema:
+ *           type: string
+ *           example: "Palm Leaf,Bagasse"
+ *         required: false
+ *         description: Comma-separated materials to include.
+ *       - in: query
+ *         name: country
+ *         schema:
+ *           type: string
+ *           example: "US,CA,UK"
+ *         required: false
+ *         description: Comma-separated countries to include.
+ *       - in: query
+ *         name: monthYear
+ *         schema:
+ *           type: string
+ *           example: "2025-09"
+ *         required: false
+ *         description: Month filter in YYYY-MM; defaults to previous month when omitted.
+ *     responses:
+ *       200:
+ *         description: SKU count by geography data fetched successfully
+ *         content:
+ *           application/json:
+ *             examples:
+ *               sample:
+ *                 summary: Example SKU count by geography data
+ *                 value:
+ *                   - {
+ *                     "Country": "USA",
+ *                     "SKU Count": "10"
+ *                     }
+ *       500:
+ *         description: Error fetching SKU count by geography data
+ *         content:
+ *           application/json:
+ *             example:
+ *               message: "Error fetching SKU count by geography data"
+ *               error: "Error message"
+ */
+router.get('/overview/sku-count-by-geography', ecommerceController.getSKUCountByGeographyData);
+
+/**
+ * @swagger
  * /ecommerce/overview/alert-count-by-geography:
  *   get:
  *     tags:
