@@ -7,7 +7,7 @@ import demandRoutes from './User/Routes/demandRoutes.js';
 import supplyChainRoutes from './User/Routes/supplyChain.js';
 import cors from 'cors';
 import ecommerceRoutes from './User/Routes/eCommerce.js';
-
+import pnlRoutes from './User/Routes/pnlRoutes.js';
 dotenv.config();
 
 const app = express();
@@ -27,6 +27,7 @@ app.use('/inventory', inventoryRoutes);
 app.use('/demand', demandRoutes);
 app.use('/supply-chain', supplyChainRoutes);
 app.use('/ecommerce', ecommerceRoutes);
+app.use('/pnl', pnlRoutes);
 
 app.get('/', (req, res) => {
     res.send(`<h1 style="color: #000; font-size: 24px; font-weight: bold; text-align: center;">Thrive Dashboard Backend API</h1>`);
