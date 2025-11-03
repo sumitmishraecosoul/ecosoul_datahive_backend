@@ -1,6 +1,7 @@
 import azureClient from '../../Utils/azureBlobConnection.js';
 import { BlobServiceClient } from '@azure/storage-blob';
 import dotenv from 'dotenv';
+import getDistinctColumnValues from '../../Utils/filterSelector.js';
 dotenv.config();
 
 const scQuickCommerce = {};
@@ -201,7 +202,22 @@ scQuickCommerce.getSCOverviewMetricTableData = async (req, res) => {
 	try {
 		const supplyPath = scQuickCommerce.getSupplyChainBlobPath();
 		console.log('SupplyChain blobPath:', supplyPath);
-		const rows = await azureClient.fecthDatafromBlog(supplyPath);
+		let rows = await azureClient.fecthDatafromBlog(supplyPath);
+		// Optional filter by comma-separated SKU list from query param
+		const skuParam = req.query && typeof req.query.sku !== 'undefined' ? String(req.query.sku) : '';
+		const hasSkuFilter = skuParam.trim() !== '';
+		if (hasSkuFilter) {
+			const allowedSkus = new Set(
+				skuParam
+					.split(',')
+					.map(s => s.trim())
+					.filter(Boolean)
+			);
+			rows = rows.filter(row => {
+				const sku = row.SKU ?? row.sku ?? row.Sku;
+				return sku !== undefined && allowedSkus.has(String(sku).trim());
+			});
+		}
 		
 		// Filter to only return specified fields
 		const filteredRows = rows.map(row => {
@@ -341,6 +357,46 @@ scQuickCommerce.getQuickCommerceMetrics = async (req, res) => {
 	} catch (error) {
 		return res.status(500).json({ message: 'Error computing quick commerce metrics', error: error.message });
 	}
+};
+
+// Filters for Supply Chain
+scQuickCommerce.getSupplyChainOverviewFilters = async (req, res) => {
+    try {
+        const supplyPath = scQuickCommerce.getSupplyChainBlobPath();
+        console.log('SupplyChain blobPath:', supplyPath);
+        const rows = await azureClient.fecthDatafromBlog(supplyPath);
+        if (!Array.isArray(rows)) rows = [];
+
+        const allDistinct = getDistinctColumnValues(rows);
+        const result = {
+            SKU: allDistinct['SKU'] || allDistinct['sku'] || allDistinct['Sku'] || [],
+        };
+
+        return res.status(200).json(result);
+    }
+    catch (error) {
+        return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+    }
+};
+
+scQuickCommerce.getSupplyChainQuickCommerceFilters = async (req, res) => {
+    try {
+        const quickPath = scQuickCommerce.getQuickCommBlobPath();
+        console.log('QuickComm blobPath (filters):', quickPath);
+        const rows = await azureClient.fecthDatafromBlog(quickPath);
+        if (!Array.isArray(rows)) rows = [];
+
+		const allDistinct = getDistinctColumnValues(rows);
+        const result = {
+            SKU: allDistinct['SKU'],
+			Location: allDistinct['Location'] || allDistinct['location'] || []
+        };
+
+        return res.status(200).json(result);
+    }
+    catch (error) {
+        return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+    }
 };
 
 // Download API endpoints

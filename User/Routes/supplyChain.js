@@ -180,6 +180,14 @@ router.get('/quick-commerce/data', scQuickCommerce.getQuickCommMetricTableData);
  *       - Supply Chain
  *     summary: Get full Supply Chain Overview dataset (parsed)
  *     description: Returns the entire parsed contents of the Supply Chain Overview CSV as an array of rows.
+ *     parameters:
+ *       - in: query
+ *         name: sku
+ *         schema:
+ *           type: string
+ *           example: "PLP8SQ10,PP10PPL,BCBXXL"
+ *         required: false
+ *         description: Comma-separated list of SKUs to filter by before returning the dataset.
  *     responses:
  *       200:
  *         description: Parsed rows fetched successfully
@@ -207,6 +215,55 @@ router.get('/quick-commerce/data', scQuickCommerce.getQuickCommMetricTableData);
  *         description: Error fetching parsed dataset
  */
 router.get('/overview/data', scQuickCommerce.getSCOverviewMetricTableData);
+
+/**
+ * @swagger
+ * /supply-chain/overview/filters:
+ *   get:
+ *     tags:
+ *       - Supply Chain
+ *     summary: Get Supply Chain Overview filters
+ *     description: Returns the filters for the Supply Chain Overview dataset.
+ *     responses:
+ *       200:   
+ *         description: Filters fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sku: { type: array, example: ['SKU1', 'SKU2'] }
+ *                 channel: { type: array, example: ['Channel1', 'Channel2'] }
+ *                 material: { type: array, example: ['Material1', 'Material2'] }
+ *                 boxPerCase: { type: array, example: ['10', '20'] }
+ *                 metrics: { type: array, example: ['3G', 'Updike', 'Shipcube-East', 'Shipcube-West', 'Amazon-USA', 'Amazon-Canada'] }
+ *       500:
+ *         description: Error fetching filters
+ */
+router.get('/overview/filters', scQuickCommerce.getSupplyChainOverviewFilters);
+
+/**
+ * @swagger
+ * /supply-chain/quick-commerce/filters:
+ *   get:
+ *     tags:
+ *       - Supply Chain
+ *     summary: Get Supply Chain Quick Commerce filters
+ *     description: Returns the filters for the Supply Chain Quick Commerce dataset.
+ *     responses:
+ *       200:
+ *         description: Filters fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 sku: { type: array, example: ['SKU1', 'SKU2'] }
+ *                 location: { type: array, example: ['Location1', 'Location2'] }
+ *       500:
+ *         description: Error fetching filters
+ */
+router.get('/quick-commerce/filters', scQuickCommerce.getSupplyChainQuickCommerceFilters);
 
 /**
  * @swagger

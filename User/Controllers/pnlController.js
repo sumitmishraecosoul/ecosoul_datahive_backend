@@ -1,6 +1,7 @@
 import azureClient from '../../Utils/azureBlobConnection.js';
 import { BlobServiceClient } from '@azure/storage-blob';
 import dotenv from 'dotenv';
+import getDistinctColumnValues from '../../Utils/filterSelector.js';
 dotenv.config();
 
 const pnlController = {};
@@ -439,6 +440,34 @@ pnlController.getPnlBusinessMetricTableData = async (req, res) => {
 
         return res.status(200).json(result);
     } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+pnlController.getPnlTransactionFilters = async (req, res) => {
+    try {
+        const blobPath = pnlController.getPnlTransactionBlobPath();
+        let rows = await azureClient.fecthDatafromBlog(blobPath);
+        if (!Array.isArray(rows)) rows = [];
+
+        const allDistinctValues = getDistinctColumnValues(rows);
+        
+        const result = {
+            'Channel': allDistinctValues['Channel'] || allDistinctValues['channel'] || [],
+            'Month-Year': []
+        };
+        
+        const monthYearKeys = ['Month-Year', 'Year-Month', 'YearMonth', 'Year_Month', 'year-month', 'yearmonth'];
+        for (const key of monthYearKeys) {
+            if (allDistinctValues[key] && allDistinctValues[key].length > 0) {
+                result['Month-Year'] = allDistinctValues[key];
+                break;
+            }
+        }
+
+        return res.status(200).json(result);
+    }
+    catch (error) {
         return res.status(500).json({ error: error.message });
     }
 }

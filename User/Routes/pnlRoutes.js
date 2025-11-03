@@ -205,4 +205,35 @@ router.get('/business/metric-data', pnlController.getPnlBusinessMetricData);
  */
 router.get('/business/metric-table-data', pnlController.getPnlBusinessMetricTableData);
 
+
+/**
+ * @swagger
+ * /pnl/transaction/filters:
+ *   get:
+ *     tags:
+ *       - PNL
+ *     summary: Get PNL transaction filters
+ *     description: Returns distinct values for Channel and Month-Year columns from the transaction PNL dataset.
+ *     responses:
+ *       200:
+ *         description: Filters fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 Channel:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ['Amazon USA', 'Amazon Canada']
+ *                 Month-Year:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ['2025-09', '2025-10']
+ *       500: { description: Internal server error }
+ */
+router.get('/transaction/filters', pnlController.getPnlTransactionFilters);
+
 export default router;
