@@ -379,5 +379,72 @@ router.get('/overview/alert-count-by-geography', ecommerceController.getAlertCou
  */
 router.get('/overview/sku-type-by-geography', ecommerceController.getSKUTypebyGeographyData);
 
+/**
+ * @swagger
+ * /ecommerce/overview/filters:
+ *   get:
+ *     tags:
+ *       - Ecommerce
+ *     summary: Get filters for the Ecommerce Overview dataset
+ *     description: Returns distinct values for filterable columns from the Ecommerce Overview dataset.
+ *     responses:
+ *       200:
+ *         description: Filters fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 SKU:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ['PLP8SQ10', 'PLP8SQ11']
+ *                 Material:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ['Palm Leaf', 'Bagasse']
+ *                 Country:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ['USA', 'CA']
+ *                 Alert:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ['Out of Stock', 'In Stock']
+ *                 SKU_Type:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ['Plastic', 'Glass']
+ *                 Status:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ['In Stock', 'Out of Stock']
+ *                 Month_Year:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ['2025-09', '2025-10']
+ *       500:
+ *         description: Error fetching filters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Error fetching filters"
+ *                 error:
+ *                   type: string
+ *                   example: "Error message"
+ */
+router.get('/overview/filters', ecommerceController.getEcommerceOverviewFilters);
+
 export default router;
 

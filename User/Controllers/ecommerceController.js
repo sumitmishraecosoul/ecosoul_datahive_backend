@@ -1,5 +1,6 @@
 import azureClient from '../../Utils/azureBlobConnection.js';
 import { BlobServiceClient } from '@azure/storage-blob';
+import getDistinctColumnValues from "../../Utils/filterSelector.js"
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -84,6 +85,13 @@ function computeDefaultPrevMonthYear() {
 	return `${prev.getFullYear()}-${paddedMonth}`;
 }
 
+function computeCurrentMonthYear() {
+	const now = new Date();
+	const month = now.getMonth() + 1;
+	const paddedMonth = month < 10 ? `0${month}` : `${month}`;
+	return `${now.getFullYear()}-${paddedMonth}`;
+}
+
 function toSet(param) {
 	if (!param || !String(param).trim()) return undefined;
 	return new Set(String(param).split(',').map(s => s.trim()).filter(Boolean));
@@ -129,6 +137,32 @@ function toSet(param) {
          return true;
      });
  }
+
+ // Filters for Ecommerce
+ecommerceController.getEcommerceOverviewFilters = async (req, res) => {
+    try {
+        const ecommercePath = ecommerceController.getEcommerceBlobPath();
+        console.log('Ecommerce blobPath:', ecommercePath);
+        const rows = await azureClient.fecthDatafromBlog(ecommercePath);
+        if (!Array.isArray(rows)) rows = [];
+
+        const allDistinct = getDistinctColumnValues(rows);
+        const result = {
+            SKU: allDistinct['SKU'] || allDistinct['sku'] || allDistinct['Sku'] || [],
+			Material: allDistinct['Material'] || allDistinct['material'] || allDistinct['Material'] || [],
+			Country: allDistinct['Country'] || allDistinct['country'] || allDistinct['Country'] || [],
+			Alert: allDistinct['Alert'] || allDistinct['alert'] || allDistinct['Alert'] || [],
+			SKU_Type: allDistinct['SKU Type'] || allDistinct['sku type'] || allDistinct['sku_type'] || allDistinct['SKU Type'] || [],
+			Status: allDistinct['Status'] || allDistinct['status'] || allDistinct['Status'] || [],
+			Month_Year: allDistinct['Month-Year'] || allDistinct['month-year'] || allDistinct['monthYear'] || allDistinct['Month-Year'] || [],
+        };
+
+        return res.status(200).json(result);
+    }
+    catch (error) {
+        return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+    }
+};
 
 
 ecommerceController.getEcommerceOverviewMetricTableData = async (req, res) => {
@@ -226,11 +260,11 @@ ecommerceController.getEcommerceOverviewMetricCardData = async (req, res) => {
 	try {
 		const supplyPath = ecommerceController.getEcommerceBlobPath();
 		console.log('Ecommerce blobPath (ecommerce):', supplyPath);
-		let rows = await azureClient.fecthDatafromBlog(supplyPath);
-		if (!Array.isArray(rows)) rows = [];
+		let allRows = await azureClient.fecthDatafromBlog(supplyPath);
+		if (!Array.isArray(allRows)) allRows = [];
 
-		// Apply common filters (sku, material, country, monthYear w/ default prev month)
-		rows = applyCommonFilters(rows, req.query || {});
+		// Apply common filters (sku, material, country, monthYear w/ default prev month) for most metrics
+		let rows = applyCommonFilters(allRows, req.query || {});
 
 		// Columns to sum up
 		const NUMERIC_COLUMNS = [
@@ -255,10 +289,55 @@ ecommerceController.getEcommerceOverviewMetricCardData = async (req, res) => {
 		};
 
 		const totalsByColumn = Object.fromEntries(Object.values(columnMapping).map(key => [key, 0]));
+		const currentMonth = computeCurrentMonthYear();
+		
+		// Filter rows for current month only (for AWD and AWD-Intransit)
+		const currentMonthRows = allRows.filter(row => {
+			const flat = flattenObject(row);
+			const rowMonthYear = flat['Year-Month'] ?? flat['year-month'] ?? flat['Month-Year'] ?? flat['month-year'] ?? flat['YearMonth'] ?? flat['Year_Month'] ?? flat['yearmonth'];
+			const rowMonthYearStr = rowMonthYear ? String(rowMonthYear).trim() : '';
+			return rowMonthYearStr === currentMonth;
+		});
 
+		// Sum other metrics from filtered rows (with existing filters)
 		for (const row of rows) {
 			const flat = flattenObject(row);
 			for (const [csvCol, outputKey] of Object.entries(columnMapping)) {
+				// Skip AWD and AWD-Intransit here - they'll be processed separately
+				if (outputKey === 'AWD' || outputKey === 'AWD-Intransit') {
+					continue;
+				}
+				
+				let value = flat[csvCol];
+				// be tolerant to a few common header variants without changing output keys
+				if (value === undefined) {
+					const variants = [
+						csvCol.replace(/\s+/g, ' ').trim(),
+						csvCol.replace(/\s+/g, '_'),
+						csvCol.replace(/\s+/g, ''),
+						csvCol.toLowerCase()
+					];
+					for (const v of variants) {
+						if (Object.prototype.hasOwnProperty.call(flat, v)) { 
+							value = flat[v]; 
+							break; 
+						}
+					}
+				}
+				const numValue = toNumber(value);
+				if (Number.isFinite(numValue)) {
+					totalsByColumn[outputKey] += numValue;
+				}
+			}
+		}
+		
+		// Sum AWD and AWD-Intransit only from current month rows
+		for (const row of currentMonthRows) {
+			const flat = flattenObject(row);
+			for (const csvCol of ['AWD', 'AWD-Intransit']) {
+				const outputKey = columnMapping[csvCol];
+				if (!outputKey) continue;
+				
 				let value = flat[csvCol];
 				// be tolerant to a few common header variants without changing output keys
 				if (value === undefined) {
