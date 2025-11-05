@@ -5,8 +5,17 @@ dotenv.config();
 
 const tokenVerify = (req, res, next) => {
   try {
-    const accessToken = req.cookies?.accessTokenHRMS;
+    // Try to get token from cookies first, then fallback to Authorization header
+    let accessToken = req.cookies?.accessTokenHRMS;
     const refreshToken = req.cookies?.refreshTokenHRMS;
+
+    // Fallback: Check Authorization header if cookie is missing
+    if (!accessToken) {
+      const authHeader = req.headers?.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        accessToken = authHeader.substring(7); // Extract token after "Bearer "
+      }
+    }
 
     if (!accessToken) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -51,8 +60,8 @@ const tokenVerify = (req, res, next) => {
 
         res.cookie('accessTokenHRMS', newAccessToken, {
           httpOnly: true,
-          secure: false,
-          sameSite: 'lax',
+          secure: true,
+          sameSite: 'none',
           maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
