@@ -33,6 +33,12 @@ scQuickCommerce.getQuickCommBlobPath = () => buildBlobPath(QUICKCOMM_FILE);
 const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_CONNECTION_STRING;
 const containerName = process.env.AZURE_CONTAINER_NAME;
 
+// Department access control for Supply Chain
+const ALLOWED_SUPPLYCHAIN_DEPARTMENTS = [4, 1];
+function isSupplyChainAllowed(dId) {
+    return ALLOWED_SUPPLYCHAIN_DEPARTMENTS.includes(Number(dId));
+}
+
 // Helper function to get blob stream for downloads
 const getBlobStream = async (filename) => {
 	const blobPath = buildBlobPath(filename);
@@ -161,6 +167,10 @@ function aggregateTotals(rows) {
 
 scQuickCommerce.getMetricTableData = async (req, res) => {
 	try {
+		const dId = req.departmentId;
+        if (!isSupplyChainAllowed(dId)) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
 		// Acquire data strictly from Azure Blob CSV
 		let rows;
 		try {
@@ -200,6 +210,10 @@ scQuickCommerce.getMetricTableData = async (req, res) => {
 
 scQuickCommerce.getSCOverviewMetricTableData = async (req, res) => {
 	try {
+		const dId = req.departmentId;
+        if (!isSupplyChainAllowed(dId)) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
 		const supplyPath = scQuickCommerce.getSupplyChainBlobPath();
 		console.log('SupplyChain blobPath:', supplyPath);
 		let rows = await azureClient.fecthDatafromBlog(supplyPath);
@@ -252,6 +266,10 @@ scQuickCommerce.getSCOverviewMetricTableData = async (req, res) => {
 
 scQuickCommerce.getQuickCommMetricTableData = async (req, res) => {
 	try {
+		const dId = req.departmentId;
+        if (!isSupplyChainAllowed(dId)) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
 		const quickPath = scQuickCommerce.getQuickCommBlobPath();
 		console.log('QuickComm blobPath:', quickPath);
 		const rows = await azureClient.fecthDatafromBlog(quickPath);
@@ -264,6 +282,10 @@ scQuickCommerce.getQuickCommMetricTableData = async (req, res) => {
 // Consolidated metric card data for Quick Commerce
 scQuickCommerce.getQuickCommerceMetrics = async (req, res) => {
 	try {
+		const dId = req.departmentId;
+        if (!isSupplyChainAllowed(dId)) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
 		const quickPath = scQuickCommerce.getQuickCommBlobPath();
 		console.log('QuickComm metrics blobPath:', quickPath);
 		let rows = await azureClient.fecthDatafromBlog(quickPath);
@@ -362,6 +384,10 @@ scQuickCommerce.getQuickCommerceMetrics = async (req, res) => {
 // Filters for Supply Chain
 scQuickCommerce.getSupplyChainOverviewFilters = async (req, res) => {
     try {
+        const dId = req.departmentId;
+        if (!isSupplyChainAllowed(dId)) {
+            return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+        }
         const supplyPath = scQuickCommerce.getSupplyChainBlobPath();
         console.log('SupplyChain blobPath:', supplyPath);
         const rows = await azureClient.fecthDatafromBlog(supplyPath);
@@ -381,6 +407,10 @@ scQuickCommerce.getSupplyChainOverviewFilters = async (req, res) => {
 
 scQuickCommerce.getSupplyChainQuickCommerceFilters = async (req, res) => {
     try {
+        const dId = req.departmentId;
+        if (!isSupplyChainAllowed(dId)) {
+            return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+        }
         const quickPath = scQuickCommerce.getQuickCommBlobPath();
         console.log('QuickComm blobPath (filters):', quickPath);
         const rows = await azureClient.fecthDatafromBlog(quickPath);
@@ -402,6 +432,10 @@ scQuickCommerce.getSupplyChainQuickCommerceFilters = async (req, res) => {
 // Download API endpoints
 scQuickCommerce.downloadSCOverviewCSV = async (req, res) => {
 	try {
+		const dId = req.departmentId;
+        if (!isSupplyChainAllowed(dId)) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
 		const blobDownload = await getBlobStream(SUPPLY_CHAIN_FILE);
 		res.setHeader('Content-Disposition', `attachment; filename="${SUPPLY_CHAIN_FILE}"`);
 		res.setHeader('Content-Type', 'text/csv');
@@ -414,6 +448,10 @@ scQuickCommerce.downloadSCOverviewCSV = async (req, res) => {
 
 scQuickCommerce.downloadSCQuickCommerceCSV = async (req, res) => {
 	try {
+		const dId = req.departmentId;
+        if (!isSupplyChainAllowed(dId)) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
 		const blobDownload = await getBlobStream(QUICKCOMM_FILE);
 		res.setHeader('Content-Disposition', `attachment; filename="${QUICKCOMM_FILE}"`);
 		res.setHeader('Content-Type', 'text/csv');

@@ -133,6 +133,10 @@ function toSet(param) {
 
 pnlController.getPnlTransactionMetricData = async (req, res) => {
 	try {
+        const dId = req.departmentId;
+        if (dId !== 1 && dId !== 3) {
+            return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+        }
 		const blobPath = pnlController.getPnlTransactionBlobPath();
         let rows = await azureClient.fecthDatafromBlog(blobPath);
         if (!Array.isArray(rows)) rows = [];
@@ -216,6 +220,10 @@ pnlController.getPnlTransactionMetricData = async (req, res) => {
 // Sums for selected columns with same default filters as metric-data
 pnlController.getPnlTransactionMetricTableData = async (req, res) => {
     try {
+        const dId = req.departmentId;
+        if (dId !== 1 && dId !== 3) {
+            return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+        }
         const blobPath = pnlController.getPnlTransactionBlobPath();
         let rows = await azureClient.fecthDatafromBlog(blobPath);
         if (!Array.isArray(rows)) rows = [];
@@ -290,6 +298,10 @@ pnlController.getPnlTransactionMetricTableData = async (req, res) => {
 
 pnlController.getPnlBusinessMetricData = async (req, res) => {
 	try {
+        const dId = req.departmentId;
+        if (dId !== 1 && dId !== 3) {
+            return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+        }
 		const blobPath = pnlController.getPnlBusinessBlobPath();
         let rows = await azureClient.fecthDatafromBlog(blobPath);
         if (!Array.isArray(rows)) rows = [];
@@ -373,6 +385,10 @@ pnlController.getPnlBusinessMetricData = async (req, res) => {
 // Sums for selected columns with same default filters as metric-data
 pnlController.getPnlBusinessMetricTableData = async (req, res) => {
     try {
+        const dId = req.departmentId;
+        if (dId !== 1 && dId !== 3) {
+            return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+        }
         const blobPath = pnlController.getPnlBusinessBlobPath();
         let rows = await azureClient.fecthDatafromBlog(blobPath);
         if (!Array.isArray(rows)) rows = [];
@@ -446,6 +462,10 @@ pnlController.getPnlBusinessMetricTableData = async (req, res) => {
 
 pnlController.getPnlTransactionFilters = async (req, res) => {
     try {
+        const dId = req.departmentId;
+        if (dId !== 1 && dId !== 3) {
+            return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+        }
         const blobPath = pnlController.getPnlTransactionBlobPath();
         let rows = await azureClient.fecthDatafromBlog(blobPath);
         if (!Array.isArray(rows)) rows = [];

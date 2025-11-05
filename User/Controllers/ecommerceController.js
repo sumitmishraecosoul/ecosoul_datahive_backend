@@ -141,6 +141,10 @@ function toSet(param) {
  // Filters for Ecommerce
 ecommerceController.getEcommerceOverviewFilters = async (req, res) => {
     try {
+        const dId = req.departmentId;
+        if (dId !== 1 && dId !== 3) {
+            return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+        }
         const ecommercePath = ecommerceController.getEcommerceBlobPath();
         console.log('Ecommerce blobPath:', ecommercePath);
         const rows = await azureClient.fecthDatafromBlog(ecommercePath);
@@ -167,6 +171,10 @@ ecommerceController.getEcommerceOverviewFilters = async (req, res) => {
 
 ecommerceController.getEcommerceOverviewMetricTableData = async (req, res) => {
 	try {
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 3) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
 		const supplyPath = ecommerceController.getEcommerceBlobPath();
 		console.log('Ecommerce blobPath (ecommerce):', supplyPath);
 		let rows = await azureClient.fecthDatafromBlog(supplyPath);
@@ -219,6 +227,10 @@ ecommerceController.getEcommerceOverviewMetricTableData = async (req, res) => {
 
 ecommerceController.getEcommerceInventoryMetricTableData = async (req, res) => {
 	try {
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 3) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
 		const quickPath = ecommerceController.getEcommerceInventoryBlobPath();
 		console.log('EcommerceInventory blobPath (ecommerce):', quickPath);
 		let rows = await azureClient.fecthDatafromBlog(quickPath);
@@ -258,6 +270,10 @@ ecommerceController.getEcommerceInventoryMetricTableData = async (req, res) => {
 
 ecommerceController.getEcommerceOverviewMetricCardData = async (req, res) => {
 	try {
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 3) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
 		const supplyPath = ecommerceController.getEcommerceBlobPath();
 		console.log('Ecommerce blobPath (ecommerce):', supplyPath);
 		let allRows = await azureClient.fecthDatafromBlog(supplyPath);
@@ -373,6 +389,10 @@ ecommerceController.getEcommerceOverviewMetricCardData = async (req, res) => {
 
 ecommerceController.getDemandInstockByGeographyData = async (req, res) => {
 	try {
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 3) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
 		const supplyPath = ecommerceController.getEcommerceBlobPath();
 		console.log('Ecommerce blobPath (ecommerce):', supplyPath);
 		let rows = await azureClient.fecthDatafromBlog(supplyPath);
@@ -467,6 +487,10 @@ ecommerceController.getDemandInstockByGeographyData = async (req, res) => {
 
 ecommerceController.getSKUCountByGeographyData = async (req, res) => {
 	try {
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 3) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
 		const supplyPath = ecommerceController.getEcommerceBlobPath();
 		console.log('Ecommerce blobPath (ecommerce):', supplyPath);
 		let rows = await azureClient.fecthDatafromBlog(supplyPath);
@@ -499,6 +523,10 @@ ecommerceController.getSKUCountByGeographyData = async (req, res) => {
 
 ecommerceController.getAlertCountByGeographyData = async (req, res) => {
 	try {
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 3) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
 		const supplyPath = ecommerceController.getEcommerceBlobPath();
 		console.log('Ecommerce blobPath (ecommerce):', supplyPath);
 		let rows = await azureClient.fecthDatafromBlog(supplyPath);
@@ -558,6 +586,10 @@ ecommerceController.getAlertCountByGeographyData = async (req, res) => {
 
 ecommerceController.getSKUTypebyGeographyData = async (req, res) => {
 	try {
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 3) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
 		const supplyPath = ecommerceController.getEcommerceBlobPath();
 		console.log('Ecommerce blobPath (ecommerce):', supplyPath);
 		let rows = await azureClient.fecthDatafromBlog(supplyPath);
