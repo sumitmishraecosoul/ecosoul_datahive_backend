@@ -306,14 +306,19 @@ ecommerceController.getEcommerceOverviewMetricCardData = async (req, res) => {
 
 		const totalsByColumn = Object.fromEntries(Object.values(columnMapping).map(key => [key, 0]));
 		const currentMonth = computeCurrentMonthYear();
-		
-		// Filter rows for current month only (for AWD and AWD-Intransit)
-		const currentMonthRows = allRows.filter(row => {
-			const flat = flattenObject(row);
-			const rowMonthYear = flat['Year-Month'] ?? flat['year-month'] ?? flat['Month-Year'] ?? flat['month-year'] ?? flat['YearMonth'] ?? flat['Year_Month'] ?? flat['yearmonth'];
-			const rowMonthYearStr = rowMonthYear ? String(rowMonthYear).trim() : '';
-			return rowMonthYearStr === currentMonth;
-		});
+
+		// Determine source rows for AWD fields:
+		// - If monthYear is provided, use the already filtered rows (respects all filters including monthYear)
+		// - Otherwise, fall back to current-month rows while still honoring other filters
+		const monthYearProvided = !!(req.query && typeof req.query.monthYear === 'string' && req.query.monthYear.trim());
+		const awdSourceRows = monthYearProvided
+			? rows
+			: rows.filter(row => {
+				const flat = flattenObject(row);
+				const rowMonthYear = flat['Year-Month'] ?? flat['year-month'] ?? flat['Month-Year'] ?? flat['month-year'] ?? flat['YearMonth'] ?? flat['Year_Month'] ?? flat['yearmonth'];
+				const rowMonthYearStr = rowMonthYear ? String(rowMonthYear).trim() : '';
+				return rowMonthYearStr === currentMonth;
+			});
 
 		// Sum other metrics from filtered rows (with existing filters)
 		for (const row of rows) {
@@ -347,8 +352,8 @@ ecommerceController.getEcommerceOverviewMetricCardData = async (req, res) => {
 			}
 		}
 		
-		// Sum AWD and AWD-Intransit only from current month rows
-		for (const row of currentMonthRows) {
+		// Sum AWD and AWD-Intransit from the selected AWD source rows
+		for (const row of awdSourceRows) {
 			const flat = flattenObject(row);
 			for (const csvCol of ['AWD', 'AWD-Intransit']) {
 				const outputKey = columnMapping[csvCol];
