@@ -22,8 +22,8 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors(
     {
-        // origin: 'https://datahive.vectoraistudio.com',
-		origin: 'http://localhost:7600',	
+        origin: 'https://datahive.vectoraistudio.com',
+		// origin: 'http://localhost:7600',	
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: true
