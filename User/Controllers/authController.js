@@ -8,6 +8,42 @@ dotenv.config();
 
 const authController = {};
 
+authController.register = async (req, res) => {
+  try {
+    const { name, email, password, department } = req.body || {};
+
+    if (!name || !email || !password || !department) {
+      return res.status(400).json({ message: "All fields (name, email, password, department) are required" });
+    }
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists with this email" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const dept = await Department.findByPk(department);
+    if (!dept) {
+      return res.status(400).json({ message: "Department not found" });
+    }
+
+    const newUser = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      department
+    });
+
+    const userSafe = { ...newUser.toJSON() };
+    delete userSafe.password;
+
+    return res.status(201).json({ message: "User registered successfully", user: userSafe });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 authController.login = async (req, res) => {
   try {
     const { email, password } = req.body || {};

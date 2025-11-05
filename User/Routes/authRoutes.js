@@ -13,6 +13,49 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:    
+ *           schema:
+ *             type: object
+ *             required: [name, email, password, department]
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *               department:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *       400:
+ *         description: Validation error or user already exists
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/register', authController.register);
+
+/**
+ * @swagger
  * /auth/login:
  *   post:
  *     summary: Login with email and password
