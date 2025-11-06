@@ -9,6 +9,7 @@ import cors from 'cors';
 import ecommerceRoutes from './User/Routes/eCommerce.js';
 import pnlRoutes from './User/Routes/pnlRoutes.js';
 import authRoutes from './User/Routes/authRoutes.js';
+import notesRoutes from './User/Routes/notesRoutes.js';
 import sequelize from './Utils/dbConnection.js';
 import User from './Models/user.js';
 import Department from './Models/department.js';
@@ -22,9 +23,9 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors(
     {
-        origin: 'https://datahive.vectoraistudio.com',
-		// origin: 'http://localhost:7600',	
-        methods: ['GET', 'POST', 'PUT', 'DELETE'],
+        // origin: 'https://datahive.vectoraistudio.com',
+		origin: 'http://localhost:7600',	
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: true
     }
@@ -37,6 +38,7 @@ app.use('/supply-chain',tokenVerify, supplyChainRoutes);
 app.use('/ecommerce',tokenVerify, ecommerceRoutes);
 app.use('/pnl',tokenVerify, pnlRoutes);
 app.use('/auth', authRoutes);
+app.use('/notes', tokenVerify, notesRoutes);
 
 app.get('/', (req, res) => {
     res.send(`<h1 style="color: #000; font-size: 24px; font-weight: bold; text-align: center;">Thrive Dashboard Backend API</h1>`);
