@@ -653,5 +653,40 @@ ecommerceController.getSKUTypebyGeographyData = async (req, res) => {
 	}
 }
 
+// Download API endpoints
+ecommerceController.downloadEcommerceOverviewCSV = async (req, res) => {
+	try {
+		const dId = req.departmentId;
+        if (dId !== 1 && dId !== 3) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
+		const blobDownload = await getBlobStream(E_COMMERCE_FILE);
+		res.setHeader('Content-Disposition', `attachment; filename="${E_COMMERCE_FILE}"`);
+		res.setHeader('Content-Type', 'text/csv');
+		blobDownload.readableStreamBody.pipe(res);
+	} catch (error) {
+		console.error('Error downloading Ecommerce Overview CSV:', error);
+		res.status(404).send('File not found');
+	}
+};
+
+ecommerceController.downloadEcommerceInventoryCSV = async (req, res) => {
+	try {
+		const dId = req.departmentId;
+        if (dId !== 1 && dId !== 3) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
+		const blobDownload = await getBlobStream(ECOMMERCE_INVENTORY_FILE);
+		res.setHeader('Content-Disposition', `attachment; filename="${ECOMMERCE_INVENTORY_FILE}"`);
+		res.setHeader('Content-Type', 'text/csv');
+		blobDownload.readableStreamBody.pipe(res);
+	} catch (error) {
+		console.error('Error downloading Ecommerce Inventory CSV:', error);
+		res.status(404).send('File not found');
+	}
+};
+
+
+
 export default ecommerceController;
 

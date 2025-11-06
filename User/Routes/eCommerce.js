@@ -446,5 +446,67 @@ router.get('/overview/sku-type-by-geography', ecommerceController.getSKUTypebyGe
  */
 router.get('/overview/filters', ecommerceController.getEcommerceOverviewFilters);
 
+
+/**
+ * @swagger
+ * /ecommerce/download/overview:
+ *   get:
+ *     tags:
+ *       - Ecommerce
+ *     summary: Download Ecommerce Overview CSV
+ *     description: Downloads the Ecommerce Overview CSV file from Azure Blob Storage.
+ *     responses:
+ *       200:
+ *         description: CSV file downloaded successfully
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *             example: |
+ *               SKU,Country,Month-Year,Demand,afn-fulfillable-quantity,Sale_Quantity,Total incoming,Sale_Lost,AWD,AWD-Intransit
+ *               PLP8SQ10,USA,2025-09,100,100,100,100,100,100,100
+ *               PLP8SQ11,CA,2025-09,100,100,100,100,100,100,100
+ *       500:
+ *         description: Error downloading Ecommerce Overview CSV
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Error downloading Ecommerce Overview CSV"
+ */
+router.get('/download/overview', ecommerceController.downloadEcommerceOverviewCSV);
+
+
+/**
+ * @swagger
+ * /ecommerce/download/inventory:
+ *   get:
+ *     tags:
+ *       - Ecommerce
+ *     summary: Download Ecommerce Inventory CSV
+ *     description: Downloads the Ecommerce Inventory CSV file from Azure Blob Storage.
+ *     responses:
+ *       200:
+ *         description: CSV file downloaded successfully
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *             example: |
+ *               SKU,Country,Month-Year,Demand,afn-fulfillable-quantity,Sale_Quantity,Total incoming,Sale_Lost,AWD,AWD-Intransit
+ *               PLP8SQ10,USA,2025-09,100,100,100,100,100,100,100
+ *               PLP8SQ11,CA,2025-09,100,100,100,100,100,100,100
+ *       500:
+ *         description: Error downloading Ecommerce Inventory CSV
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Error downloading Ecommerce Inventory CSV"
+ */
+router.get('/download/inventory', ecommerceController.downloadEcommerceInventoryCSV);
+
 export default router;
 
