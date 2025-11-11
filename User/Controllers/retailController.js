@@ -4,11 +4,11 @@ import dotenv from 'dotenv';
 import getDistinctColumnValues from '../../Utils/filterSelector.js';
 dotenv.config();
 
-const scQuickCommerce = {};
+const retailController = {};
 
 // Filenames in the same blob/container
-const SUPPLY_CHAIN_FILE = 'Ecosoul-inventory_Supply_chain.csv';
-const QUICKCOMM_FILE = 'Ecosoul-quickcomm_invoice_SD.csv';
+const KEHE_K_SOLVE = 'Ecosoul-Kehe-Solve_overall.csv';
+// const QUICKCOMM_FILE = 'Ecosoul-quickcomm_invoice_SD.csv';
 
 function buildBlobPath(filename) {
 	const base = process.env.AZURE_BLOB_PATH || '';
@@ -26,8 +26,7 @@ function buildBlobPath(filename) {
 }
 
 // Expose helpers for future APIs in this controller
-scQuickCommerce.getSupplyChainBlobPath = () => buildBlobPath(SUPPLY_CHAIN_FILE);
-scQuickCommerce.getQuickCommBlobPath = () => buildBlobPath(QUICKCOMM_FILE);
+retailController.getKeheKSolveBlobPath = () => buildBlobPath(KEHE_K_SOLVE);
 
 // Azure Storage connection for downloads
 const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_CONNECTION_STRING;
@@ -108,46 +107,404 @@ function mapRowToFrontend(row) {
 	};
 }
 
-function applyBasicFilters(rows, query) {
+function applyQueryFilters(rows, query) {
 	const hasFilters = query && Object.values(query).some(v => v !== undefined && v !== null && String(v).trim() !== '');
 	if (!hasFilters) return rows;
+	
 	const skuFilter = query.sku ? String(query.sku).split(',').map(s => s.trim()) : undefined;
 	const channelFilter = query.channel ? String(query.channel).split(',').map(s => s.trim()) : undefined;
+	const invoiceNoFilter = query.Invoice_No ? String(query.Invoice_No).split(',').map(s => s.trim()) : undefined;
+	const categoryTypeFilter = query.Category_Type ? String(query.Category_Type).split(',').map(s => s.trim()) : undefined;
+	const typeFilter = query.Type ? String(query.Type).split(',').map(s => s.trim()) : undefined;
+	const statusFilter = query.Status ? String(query.Status).split(',').map(s => s.trim()) : undefined;
+	const poNoFilter = query.PO_No ? String(query.PO_No).split(',').map(s => s.trim()) : undefined;
+	const dcNameFilter = query.DC_Name ? String(query.DC_Name).split(',').map(s => s.trim()) : undefined;
+	const dateFilter = query.Date ? String(query.Date).split(',').map(s => s.trim()) : undefined;
+	
 	return rows.filter(r => {
 		const flat = flattenObject(r);
-		const sku = String(getValueByPossibleKeys(flat, ['SKU', 'sku', 'Sku']) ?? '');
-		const channel = String(getValueByPossibleKeys(flat, ['Channel', 'channel']) ?? '');
-		if (skuFilter && !skuFilter.includes(sku)) return false;
-		if (channelFilter && !channelFilter.includes(channel)) return false;
+		
+		if (skuFilter) {
+			const sku = String(getValueByPossibleKeys(flat, ['SKU', 'sku', 'Sku']) ?? '');
+			if (!skuFilter.includes(sku)) return false;
+		}
+		
+		if (channelFilter) {
+			const channel = String(getValueByPossibleKeys(flat, ['Channel', 'channel']) ?? '');
+			if (!channelFilter.includes(channel)) return false;
+		}
+		
+		if (invoiceNoFilter) {
+			const invoiceNo = String(getValueByPossibleKeys(flat, ['Invoice #', 'Invoice_No', 'invoice #', 'Invoice_#']) ?? '');
+			if (!invoiceNoFilter.includes(invoiceNo)) return false;
+		}
+		
+		if (categoryTypeFilter) {
+			const categoryType = String(getValueByPossibleKeys(flat, ['Category Type', 'CategoryType', 'category_type', 'categoryType', 'Category_Type']) ?? '');
+			if (!categoryTypeFilter.includes(categoryType)) return false;
+		}
+		
+		if (typeFilter) {
+			const type = String(getValueByPossibleKeys(flat, ['Type', 'type']) ?? '');
+			if (!typeFilter.includes(type)) return false;
+		}
+		
+		if (statusFilter) {
+			const status = String(getValueByPossibleKeys(flat, ['Status', 'status']) ?? '');
+			if (!statusFilter.includes(status)) return false;
+		}
+		
+		if (poNoFilter) {
+			const poNo = String(getValueByPossibleKeys(flat, ['PO #', 'PO_No', 'po #']) ?? '');
+			if (!poNoFilter.includes(poNo)) return false;
+		}
+		
+		if (dcNameFilter) {
+			const dcName = String(getValueByPossibleKeys(flat, ['DC #', 'DC_Name', 'dc #']) ?? '');
+			if (!dcNameFilter.includes(dcName)) return false;
+		}
+		
+		if (dateFilter) {
+			const date = String(getValueByPossibleKeys(flat, ['Date', 'date', 'Invoice_Date', 'Invoice Date']) ?? '');
+			if (!dateFilter.includes(date)) return false;
+		}
+		
 		return true;
 	});
 }
 
-function aggregateTotals(rows) {
-	const totals = {};
-	for (const col of METRIC_COLUMNS) totals[col] = 0;
-	for (const row of rows) {
-		const mapped = mapRowToFrontend(row);
-		for (const col of METRIC_COLUMNS) {
-			const n = toNumber(mapped.metrics[col]);
-			if (Number.isFinite(n)) totals[col] += n;
+
+retailController.getKeheKSolveInvoiceDeduction = async(req,res) =>{
+	try{
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 2) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
 		}
+
+		const keheKSolvePath = retailController.getKeheKSolveBlobPath();
+		console.log('KeheKSolve blobPath:', keheKSolvePath);
+		let rows = await azureClient.fecthDatafromBlog(keheKSolvePath);
+		if (!Array.isArray(rows)) rows = [];
+
+		rows = applyQueryFilters(rows, req.query || {});
+
+		// Helper to find column value with possible key variations
+		const getColumnValue = (flatRow, possibleKeys) => {
+			return getValueByPossibleKeys(flatRow, possibleKeys);
+		};
+
+		// Group by Category Type and sum Invoice Total
+		const sumsByCategory = {};
+		let totalSum = 0;
+		
+		for (const row of rows) {
+			const flat = flattenObject(row);
+			
+			// Get Category Type with possible key variations
+			const categoryType = getColumnValue(flat, [
+				'Category Type',
+				'CategoryType',
+				'category_type',
+				'categoryType',
+				'Category_Type'
+			]);
+			
+			// Get Invoice Total with possible key variations
+			const invoiceTotal = getColumnValue(flat, [
+				'Invoice Total',
+				'InvoiceTotal',
+				'invoice_total',
+				'invoiceTotal',
+				'Invoice_Total'
+			]);
+			
+			// Parse invoice total amount
+			const amount = toNumber(invoiceTotal);
+			if (!Number.isFinite(amount)) {
+				continue;
+			}
+			
+			// Add to total sum
+			totalSum += amount;
+			
+			// Skip if category type is missing
+			if (!categoryType || categoryType === null || categoryType === undefined || String(categoryType).trim() === '') {
+				continue;
+			}
+			
+			const categoryKey = String(categoryType).trim();
+			
+			// Initialize category sum if not exists
+			if (!sumsByCategory[categoryKey]) {
+				sumsByCategory[categoryKey] = 0;
+			}
+			
+			// Add to category sum
+			sumsByCategory[categoryKey] += amount;
+		}
+		
+		// Calculate proportions (divide each category sum by total sum)
+		const proportionsByCategory = {};
+		if (totalSum > 0) {
+			for (const [category, sum] of Object.entries(sumsByCategory)) {
+				proportionsByCategory[category] = (sum / totalSum)*100;
+			}
+		}
+		
+		return res.status(200).json(proportionsByCategory);
 	}
-	let consolidated = 0;
-	for (const col of METRIC_COLUMNS) consolidated += totals[col];
-	// Convert totals back to strings as frontend expects strings in metrics
-	const totalsAsStrings = Object.fromEntries(Object.entries(totals).map(([k, v]) => [k, String(v)]));
-	return { totalsAsStrings, consolidated };
+	catch(error){
+		return res.status(500).json({ message: 'Error fetching invoice deduction by category', error: error.message });
+	}
 }
 
-retailController.getRetailOverviewInvoiceTotalData = async (req, res) => {
-	try {
-		const supplyPath = retailController.getSupplyChainBlobPath();
-		console.log('SupplyChain blobPath:', supplyPath);
-		let rows = await azureClient.fecthDatafromBlog(supplyPath);
+retailController.getKeheKSolveNetPayableDeduction = async(req,res)=>{
+	try{
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 2) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
+		const keheKSolvePath = retailController.getKeheKSolveBlobPath();
+		console.log('KeheKSolve blobPath:', keheKSolvePath);
+		let rows = await azureClient.fecthDatafromBlog(keheKSolvePath);
 		if (!Array.isArray(rows)) rows = [];
+
+		rows = applyQueryFilters(rows, req.query || {});
+
+		// Helper to find column value with possible key variations
+		const getColumnValue = (flatRow, possibleKeys) => {
+			return getValueByPossibleKeys(flatRow, possibleKeys);
+		};
+
+		// Group by Category Type and sum Invoice Total
+		const sumsByCategory = {};
+		let totalSum = 0;
+		
+		for (const row of rows) {
+			const flat = flattenObject(row);
+			
+			// Get Category Type with possible key variations
+			const categoryType = getColumnValue(flat, [
+				'Category Type',
+				'CategoryType',
+				'category_type',
+				'categoryType',
+				'Category_Type'
+			]);
+			
+			// Get Invoice Total with possible key variations
+			const invoiceTotal = getColumnValue(flat, [
+				'Net Payable',
+				'net_payable',
+			]);
+			
+			// Parse invoice total amount
+			const amount = toNumber(invoiceTotal);
+			if (!Number.isFinite(amount)) {
+				continue;
+			}
+			
+			// Add to total sum
+			totalSum += amount;
+			
+			// Skip if category type is missing
+			if (!categoryType || categoryType === null || categoryType === undefined || String(categoryType).trim() === '') {
+				continue;
+			}
+			
+			const categoryKey = String(categoryType).trim();
+			
+			// Initialize category sum if not exists
+			if (!sumsByCategory[categoryKey]) {
+				sumsByCategory[categoryKey] = 0;
+			}
+			
+			// Add to category sum
+			sumsByCategory[categoryKey] += amount;
+		}
+		
+		// Calculate proportions (divide each category sum by total sum)
+		const proportionsByCategory = {};
+		if (totalSum > 0) {
+			for (const [category, sum] of Object.entries(sumsByCategory)) {
+				proportionsByCategory[category] = (sum / totalSum)*100;
+			}
+		}
+		
+		return res.status(200).json(proportionsByCategory);
 	}
-	catch (error) {
-		return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+	catch(error){
+		return res.status(500).json({ message: 'Error fetching invoice deduction by category', error: error.message });
 	}
-};
+}
+
+retailController.getKeheKSolveInvoiceAmount = async(req,res)=>{
+	try {
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 2) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
+		const keheKSolvePath = retailController.getKeheKSolveBlobPath();
+		console.log('KeheKSolve blobPath:', keheKSolvePath);
+		let rows = await azureClient.fecthDatafromBlog(keheKSolvePath);
+		if (!Array.isArray(rows)) rows = [];
+
+		rows = applyQueryFilters(rows, req.query || {});
+
+		// Helper to find column value with possible key variations
+		const getColumnValue = (flatRow, possibleKeys) => {
+			return getValueByPossibleKeys(flatRow, possibleKeys);
+		};
+
+		// Group by Category Type and sum Invoice Amt
+		const sumsByCategory = {};
+		
+		for (const row of rows) {
+			const flat = flattenObject(row);
+			
+			// Get Category Type with possible key variations
+			const categoryType = getColumnValue(flat, [
+				'Category Type',
+				'CategoryType',
+				'category_type',
+				'categoryType',
+				'Category_Type'
+			]);
+			
+			// Get Invoice Amt with possible key variations
+			const invoiceAmt = getColumnValue(flat, [
+				'Invoice Amt',
+				'InvoiceAmt',
+				'invoice_amt',
+				'invoiceAmt',
+				'Invoice_Amt',
+				'Invoice Amount',
+				'InvoiceAmount',
+				'invoice_amount'
+			]);
+			
+			// Skip if category type is missing
+			if (!categoryType || categoryType === null || categoryType === undefined || String(categoryType).trim() === '') {
+				continue;
+			}
+			
+			const categoryKey = String(categoryType).trim();
+			
+			// Initialize category sum if not exists
+			if (!sumsByCategory[categoryKey]) {
+				sumsByCategory[categoryKey] = 0;
+			}
+			
+			// Parse and add invoice amount
+			const amount = toNumber(invoiceAmt);
+			if (Number.isFinite(amount)) {
+				sumsByCategory[categoryKey] += amount;
+			}
+		}
+		
+		return res.status(200).json(sumsByCategory);
+	} catch (error) {
+		return res.status(500).json({ message: 'Error fetching invoice amount by category', error: error.message });
+	}
+}
+
+retailController.getKeheKSolveMetricTableData = async(req,res) =>{
+	try {
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 2) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
+		const keheKSolvePath = retailController.getKeheKSolveBlobPath();
+		console.log('KeheKSolve blobPath:', keheKSolvePath);
+		let rows = await azureClient.fecthDatafromBlog(keheKSolvePath);
+		if (!Array.isArray(rows)) rows = [];
+
+		rows = applyQueryFilters(rows, req.query || {});
+
+		// Helper to find column value with possible key variations
+		const getColumnValue = (flatRow, possibleKeys) => {
+			return getValueByPossibleKeys(flatRow, possibleKeys);
+		};
+
+		// Define column mappings with possible key variations
+		const columnMappings = {
+			'Invoice': [
+				'Invoice #',
+			],
+			'Invoice Date': [
+				'Invoice_Date',
+			],
+			'Category Type': [
+				'Category Type',
+				'CategoryType'
+			],
+			'Invoice Amount': [
+				'Invoice Amt',
+				'InvoiceAmt',
+			],
+			'Invoice Total': [
+				'Invoice Total',
+				'InvoiceTotal',
+				'Invoice_Total'
+			],
+			'Net Deduction': [
+				'Net Deduction',
+				'NetDeduction',
+			],
+			'Net Payable': [
+				'Net Payable',
+				'NetPayable',
+			]
+		};
+
+		// Filter rows to only include specified columns
+		const filteredRows = rows.map(row => {
+			const flat = flattenObject(row);
+			const filteredRow = {};
+			
+			// Extract only the specified columns
+			for (const [outputKey, possibleKeys] of Object.entries(columnMappings)) {
+				const value = getColumnValue(flat, possibleKeys);
+				// Include the column even if value is null/undefined to maintain structure
+				filteredRow[outputKey] = value !== undefined ? value : null;
+			}
+			
+			return filteredRow;
+		});
+
+		return res.status(200).json(filteredRows);
+	} catch (error) {
+		return res.status(500).json({ message: 'Error fetching metric table data', error: error.message });
+	}
+}
+
+retailController.getKeheKSolveFilters = async(req,res) =>{
+	try {
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 2) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
+        const keheKSolvePath = retailController.getKeheKSolveBlobPath();
+        console.log('KeheKSolve blobPath:', keheKSolvePath);
+        const rows = await azureClient.fecthDatafromBlog(keheKSolvePath);
+        if (!Array.isArray(rows)) rows = [];
+
+        const allDistinct = getDistinctColumnValues(rows);
+        const result = {
+            Invoice_No: allDistinct['Invoice #'] || allDistinct['invoice #'] || allDistinct['Invoice_#'] || [],
+			Category_Type : allDistinct['Category Type'] || allDistinct['category type'] || allDistinct['Category_Type'] || [],
+			Type: allDistinct['Type'] || allDistinct['type'] || allDistinct['Type'] || [],
+			Status: allDistinct['Status'] || allDistinct['status'] || allDistinct['Status'] || [],
+			PO_No: allDistinct['PO #'] || allDistinct['po #'] || allDistinct['PO_No'] || [],
+			DC_Name : allDistinct['DC #'] || allDistinct['dc #'] || [],
+			Date: allDistinct['Date'] || allDistinct['date'] || [],
+        };
+
+        return res.status(200).json(result);
+    }
+    catch (error) {
+        return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+    }
+}
+
+export default retailController;

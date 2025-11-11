@@ -15,6 +15,7 @@ import User from './Models/user.js';
 import Department from './Models/department.js';
 import tokenVerify from './User/Middleware/tokenVerify.js';
 import cookieParser from 'cookie-parser';
+import retailRoutes from './User/Routes/retailRoutes.js';
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use('/ecommerce',tokenVerify, ecommerceRoutes);
 app.use('/pnl',tokenVerify, pnlRoutes);
 app.use('/auth', authRoutes);
 app.use('/notes', tokenVerify, notesRoutes);
+app.use('/retail', tokenVerify, retailRoutes);
 
 app.get('/', (req, res) => {
     res.send(`<h1 style="color: #000; font-size: 24px; font-weight: bold; text-align: center;">Thrive Dashboard Backend API</h1>`);
