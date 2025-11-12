@@ -1,14 +1,16 @@
+//This controller only has controllers for Kehe.
+
 import azureClient from '../../Utils/azureBlobConnection.js';
 import { BlobServiceClient } from '@azure/storage-blob';
 import dotenv from 'dotenv';
-import getDistinctColumnValues from '../../Utils/filterSelector.js';
+import getDistinctColumnValues, { applyFiltersByMappings } from '../../Utils/filterSelector.js';
 dotenv.config();
 
 const retailController = {};
 
 // Filenames in the same blob/container
 const KEHE_K_SOLVE = 'Ecosoul-Kehe-Solve_overall.csv';
-// const QUICKCOMM_FILE = 'Ecosoul-quickcomm_invoice_SD.csv';
+const KEHE_CS = 'Ecosoul-Kehe_Chain_Store.csv';
 
 function buildBlobPath(filename) {
 	const base = process.env.AZURE_BLOB_PATH || '';
@@ -27,6 +29,7 @@ function buildBlobPath(filename) {
 
 // Expose helpers for future APIs in this controller
 retailController.getKeheKSolveBlobPath = () => buildBlobPath(KEHE_K_SOLVE);
+retailController.getKeheCSBlobPath = () => buildBlobPath(KEHE_CS);
 
 // Azure Storage connection for downloads
 const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_CONNECTION_STRING;
@@ -107,71 +110,30 @@ function mapRowToFrontend(row) {
 	};
 }
 
-function applyQueryFilters(rows, query) {
-	const hasFilters = query && Object.values(query).some(v => v !== undefined && v !== null && String(v).trim() !== '');
-	if (!hasFilters) return rows;
-	
-	const skuFilter = query.sku ? String(query.sku).split(',').map(s => s.trim()) : undefined;
-	const channelFilter = query.channel ? String(query.channel).split(',').map(s => s.trim()) : undefined;
-	const invoiceNoFilter = query.Invoice_No ? String(query.Invoice_No).split(',').map(s => s.trim()) : undefined;
-	const categoryTypeFilter = query.Category_Type ? String(query.Category_Type).split(',').map(s => s.trim()) : undefined;
-	const typeFilter = query.Type ? String(query.Type).split(',').map(s => s.trim()) : undefined;
-	const statusFilter = query.Status ? String(query.Status).split(',').map(s => s.trim()) : undefined;
-	const poNoFilter = query.PO_No ? String(query.PO_No).split(',').map(s => s.trim()) : undefined;
-	const dcNameFilter = query.DC_Name ? String(query.DC_Name).split(',').map(s => s.trim()) : undefined;
-	const dateFilter = query.Date ? String(query.Date).split(',').map(s => s.trim()) : undefined;
-	
-	return rows.filter(r => {
-		const flat = flattenObject(r);
-		
-		if (skuFilter) {
-			const sku = String(getValueByPossibleKeys(flat, ['SKU', 'sku', 'Sku']) ?? '');
-			if (!skuFilter.includes(sku)) return false;
-		}
-		
-		if (channelFilter) {
-			const channel = String(getValueByPossibleKeys(flat, ['Channel', 'channel']) ?? '');
-			if (!channelFilter.includes(channel)) return false;
-		}
-		
-		if (invoiceNoFilter) {
-			const invoiceNo = String(getValueByPossibleKeys(flat, ['Invoice #', 'Invoice_No', 'invoice #', 'Invoice_#']) ?? '');
-			if (!invoiceNoFilter.includes(invoiceNo)) return false;
-		}
-		
-		if (categoryTypeFilter) {
-			const categoryType = String(getValueByPossibleKeys(flat, ['Category Type', 'CategoryType', 'category_type', 'categoryType', 'Category_Type']) ?? '');
-			if (!categoryTypeFilter.includes(categoryType)) return false;
-		}
-		
-		if (typeFilter) {
-			const type = String(getValueByPossibleKeys(flat, ['Type', 'type']) ?? '');
-			if (!typeFilter.includes(type)) return false;
-		}
-		
-		if (statusFilter) {
-			const status = String(getValueByPossibleKeys(flat, ['Status', 'status']) ?? '');
-			if (!statusFilter.includes(status)) return false;
-		}
-		
-		if (poNoFilter) {
-			const poNo = String(getValueByPossibleKeys(flat, ['PO #', 'PO_No', 'po #']) ?? '');
-			if (!poNoFilter.includes(poNo)) return false;
-		}
-		
-		if (dcNameFilter) {
-			const dcName = String(getValueByPossibleKeys(flat, ['DC #', 'DC_Name', 'dc #']) ?? '');
-			if (!dcNameFilter.includes(dcName)) return false;
-		}
-		
-		if (dateFilter) {
-			const date = String(getValueByPossibleKeys(flat, ['Date', 'date', 'Invoice_Date', 'Invoice Date']) ?? '');
-			if (!dateFilter.includes(date)) return false;
-		}
-		
-		return true;
-	});
+// Generic wrapper: apply filters using a per-endpoint mapping (no hardcoding)
+function applyQueryFilters(rows, query, mappings) {
+	return applyFiltersByMappings(rows, query, mappings);
 }
+
+// Mappings for different datasets/APIs in this controller
+const KSOLVE_FILTER_MAPPINGS = {
+	Invoice_No: ['Invoice #', 'Invoice_#', 'invoice #'],
+	Category_Type: ['Category Type', 'Category_Type', 'CategoryType', 'categoryType', 'category_type'],
+	Type: ['Type', 'type'],
+	Status: ['Status', 'status'],
+	PO_No: ['PO #', 'PO_No', 'po #'],
+	DC_Name: ['DC #', 'DC_Name', 'dc #'],
+	Date: ['Date', 'date', 'Invoice_Date', 'Invoice Date'],
+};
+
+const CS_FILTER_MAPPINGS = {
+	Month_Year: ['File_Month'],
+	Retailer: ['Retailer', 'retailer'],
+	Retail_Area:['Retailer Area'],
+	SKU: ['SKU', 'sku', 'Sku'],
+	UPC: ['UPC', 'upc'],
+	Material: ['Material', 'material'],
+};
 
 
 retailController.getKeheKSolveInvoiceDeduction = async(req,res) =>{
@@ -187,6 +149,7 @@ retailController.getKeheKSolveInvoiceDeduction = async(req,res) =>{
 		if (!Array.isArray(rows)) rows = [];
 
 		rows = applyQueryFilters(rows, req.query || {});
+		rows = applyQueryFilters(rows, req.query || {}, KSOLVE_FILTER_MAPPINGS);
 
 		// Helper to find column value with possible key variations
 		const getColumnValue = (flatRow, possibleKeys) => {
@@ -269,7 +232,7 @@ retailController.getKeheKSolveNetPayableDeduction = async(req,res)=>{
 		let rows = await azureClient.fecthDatafromBlog(keheKSolvePath);
 		if (!Array.isArray(rows)) rows = [];
 
-		rows = applyQueryFilters(rows, req.query || {});
+		rows = applyQueryFilters(rows, req.query || {}, KSOLVE_FILTER_MAPPINGS);
 
 		// Helper to find column value with possible key variations
 		const getColumnValue = (flatRow, possibleKeys) => {
@@ -349,7 +312,7 @@ retailController.getKeheKSolveInvoiceAmount = async(req,res)=>{
 		let rows = await azureClient.fecthDatafromBlog(keheKSolvePath);
 		if (!Array.isArray(rows)) rows = [];
 
-		rows = applyQueryFilters(rows, req.query || {});
+		rows = applyQueryFilters(rows, req.query || {}, KSOLVE_FILTER_MAPPINGS);
 
 		// Helper to find column value with possible key variations
 		const getColumnValue = (flatRow, possibleKeys) => {
@@ -419,7 +382,7 @@ retailController.getKeheKSolveMetricTableData = async(req,res) =>{
 		let rows = await azureClient.fecthDatafromBlog(keheKSolvePath);
 		if (!Array.isArray(rows)) rows = [];
 
-		rows = applyQueryFilters(rows, req.query || {});
+		rows = applyQueryFilters(rows, req.query || {}, KSOLVE_FILTER_MAPPINGS);
 
 		// Helper to find column value with possible key variations
 		const getColumnValue = (flatRow, possibleKeys) => {
@@ -489,22 +452,366 @@ retailController.getKeheKSolveFilters = async(req,res) =>{
         const rows = await azureClient.fecthDatafromBlog(keheKSolvePath);
         if (!Array.isArray(rows)) rows = [];
 
+        // Build distinct lists but only for the required 7 fields
         const allDistinct = getDistinctColumnValues(rows);
         const result = {
-            Invoice_No: allDistinct['Invoice #'] || allDistinct['invoice #'] || allDistinct['Invoice_#'] || [],
-			Category_Type : allDistinct['Category Type'] || allDistinct['category type'] || allDistinct['Category_Type'] || [],
-			Type: allDistinct['Type'] || allDistinct['type'] || allDistinct['Type'] || [],
-			Status: allDistinct['Status'] || allDistinct['status'] || allDistinct['Status'] || [],
-			PO_No: allDistinct['PO #'] || allDistinct['po #'] || allDistinct['PO_No'] || [],
-			DC_Name : allDistinct['DC #'] || allDistinct['dc #'] || [],
-			Date: allDistinct['Date'] || allDistinct['date'] || [],
+        	Invoice_No: allDistinct['Invoice #'] || allDistinct['invoice #'] || allDistinct['Invoice_#'] || [],
+        	Category_Type: allDistinct['Category Type'] || allDistinct['category type'] || allDistinct['Category_Type'] || [],
+        	Type: allDistinct['Type'] || allDistinct['type'] || [],
+        	Status: allDistinct['Status'] || allDistinct['status'] || [],
+        	PO_No: allDistinct['PO #'] || allDistinct['po #'] || allDistinct['PO_No'] || [],
+        	DC_Name: allDistinct['DC #'] || allDistinct['dc #'] || allDistinct['DC_Name'] || [],
+        	Date: allDistinct['Date'] || allDistinct['date'] || allDistinct['Invoice_Date'] || allDistinct['Invoice Date'] || [],
         };
-
         return res.status(200).json(result);
     }
     catch (error) {
         return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
     }
+}
+
+retailController.getKeheCSFilters = async(req,res) =>{
+	try{
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 2) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
+		const keheCSPath = retailController.getKeheCSBlobPath();
+		console.log('KeheCS blobPath:', keheCSPath);
+		const rows = await azureClient.fecthDatafromBlog(keheCSPath);
+		if (!Array.isArray(rows)) rows = [];
+		const allDistinct = getDistinctColumnValues(rows);
+		const result = {
+			Month_Year: allDistinct['File_Month'] || allDistinct['file_month'] || [],
+			Retailer: allDistinct['Retailer'] || allDistinct['retailer'] || [],
+			Retail_Area: allDistinct['Retailer Area'] || allDistinct['retailer area'] || [],
+			SKU: allDistinct['SKU'] || allDistinct['sku'] || allDistinct['Sku'] || [],
+			UPC: allDistinct['UPC'] || allDistinct['upc'] || [],
+			Material: allDistinct['Material'] || allDistinct['material'] || allDistinct['Product'] || [],
+		};
+		return res.status(200).json(result);
+	}
+	catch(error){
+		return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+	}
+}
+
+
+retailController.getKeheCSMetricCardData = async(req,res) =>{
+	try{
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 2) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
+
+		const keheCSPath = retailController.getKeheCSBlobPath();
+		console.log('KeheCS blobPath:', keheCSPath);
+
+		let rows = await azureClient.fecthDatafromBlog(keheCSPath);
+		if (!Array.isArray(rows)) rows = [];
+
+		// Apply filters if provided in query
+		rows = applyQueryFilters(rows, req.query || {}, CS_FILTER_MAPPINGS);
+
+		// Prepare aggregations
+		let sumOrderedVendorCost = 0;
+		let sumShippedVendorCost = 0;
+
+		let sumFillRateQty = 0;
+		let countFillRateQty = 0;
+
+		let sumMarkup = 0;
+		let countMarkup = 0;
+
+		for (const row of rows) {
+			const flat = flattenObject(row);
+
+			// Handle possible key variants
+			const orderedVendorCost = getValueByPossibleKeys(flat, [
+				'Ordered (Vendor Cost)',
+				'Ordered(Vendor Cost)',
+				'Ordered_Vendor_Cost',
+				'ordered_vendor_cost',
+				'ordered (vendor cost)'
+			]);
+			const shippedVendorCost = getValueByPossibleKeys(flat, [
+				'Shipped (Vendor Cost)',
+				'Shipped(Vendor Cost)',
+				'Shipped_Vendor_Cost',
+				'shipped_vendor_cost',
+				'shipped (vendor cost)'
+			]);
+			const fillRateQty = getValueByPossibleKeys(flat, [
+				'Fill Rate (Quantity)',
+				'FillRate(Quantity)',
+				'Fill_Rate_Quantity',
+				'fill_rate_quantity',
+				'fill rate (quantity)'
+			]);
+			const markup = getValueByPossibleKeys(flat, [
+				'Markup',
+				'markup'
+			]);
+
+			const orderedNum = toNumber(orderedVendorCost);
+			if (Number.isFinite(orderedNum)) {
+				sumOrderedVendorCost += orderedNum;
+			}
+
+			const shippedNum = toNumber(shippedVendorCost);
+			if (Number.isFinite(shippedNum)) {
+				sumShippedVendorCost += shippedNum;
+			}
+
+			const fillRateNum = toNumber(fillRateQty);
+			if (Number.isFinite(fillRateNum)) {
+				sumFillRateQty += fillRateNum;
+				countFillRateQty += 1;
+			}
+
+			const markupNum = toNumber(markup);
+			if (Number.isFinite(markupNum)) {
+				sumMarkup += markupNum;
+				countMarkup += 1;
+			}
+		}
+
+		// Distinct counts using helper
+		const allDistinct = getDistinctColumnValues(rows);
+		const retailerValues =
+			allDistinct['Retailer'] ||
+			allDistinct['retailer'] ||
+			[];
+		const skuValues =
+			allDistinct['SKU'] ||
+			allDistinct['sku'] ||
+			allDistinct['Sku'] ||
+			[];
+
+		const result = {
+			'Ordered (Vendor Cost)': sumOrderedVendorCost,
+			'Shipped (Vendor Cost)': sumShippedVendorCost,
+			'Fill Rate (Quantity)':( countFillRateQty > 0 ? (sumFillRateQty / countFillRateQty) : 0)*100,
+			'Markup':( countMarkup > 0 ? (sumMarkup / countMarkup) : 0)*100,
+			'Retailer': Array.isArray(retailerValues) ? retailerValues.length : 0,
+			'SKU': Array.isArray(skuValues) ? skuValues.length : 0
+		};
+
+		return res.status(200).json(result);
+	}
+	catch(error){
+		return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+	}
+}
+
+retailController.getKeheCSRetailerVendorByShipped = async(req,res) =>{
+	try{
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 2) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
+		const keheCSPath = retailController.getKeheCSBlobPath();
+		console.log('KeheCSRetailerVendorByShipped blobPath:', keheCSPath);
+		let rows = await azureClient.fecthDatafromBlog(keheCSPath);
+		if (!Array.isArray(rows)) rows = [];
+
+		// Apply filters if provided
+		rows = applyQueryFilters(rows, req.query || {}, CS_FILTER_MAPPINGS);
+
+		// Group by Retailer and aggregate metrics
+		const retailerGroups = {};
+
+		for (const row of rows) {
+			const flat = flattenObject(row);
+
+			// Get Retailer with possible key variations
+			const retailer = getValueByPossibleKeys(flat, [
+				'Retailer',
+				'retailer'
+			]);
+
+			// Skip if retailer is missing
+			if (!retailer || retailer === null || retailer === undefined || String(retailer).trim() === '') {
+				continue;
+			}
+
+			const retailerKey = String(retailer).trim();
+
+			// Initialize retailer group if not exists
+			if (!retailerGroups[retailerKey]) {
+				retailerGroups[retailerKey] = {
+					Retailer: retailerKey,
+					Retailer_Area_Count: new Set(),
+					SKU_Count: new Set(),
+					'Ordered (Vendor Cost)': 0,
+					'Shipped (Vendor Cost)': 0
+				};
+			}
+
+			// Get Retailer Area with possible key variations
+			const retailerArea = getValueByPossibleKeys(flat, [
+				'Retailer Area',
+			]);
+			if (retailerArea !== null && retailerArea !== undefined && String(retailerArea).trim() !== '') {
+				retailerGroups[retailerKey].Retailer_Area_Count.add(String(retailerArea).trim());
+			}
+
+			// Get SKU with possible key variations
+			const sku = getValueByPossibleKeys(flat, [
+				'SKU',
+				'sku'
+			]);
+			if (sku !== null && sku !== undefined && String(sku).trim() !== '') {
+				retailerGroups[retailerKey].SKU_Count.add(String(sku).trim());
+			}
+
+			// Get Ordered (Vendor Cost) with possible key variations
+			const orderedVendorCost = getValueByPossibleKeys(flat, [
+				'Ordered (Vendor Cost)',
+			]);
+			const orderedNum = toNumber(orderedVendorCost);
+			if (Number.isFinite(orderedNum)) {
+				retailerGroups[retailerKey]['Ordered (Vendor Cost)'] += orderedNum;
+			}
+
+			// Get Shipped (Vendor Cost) with possible key variations
+			const shippedVendorCost = getValueByPossibleKeys(flat, [
+				'Shipped (Vendor Cost)',
+			]);
+			const shippedNum = toNumber(shippedVendorCost);
+			if (Number.isFinite(shippedNum)) {
+				retailerGroups[retailerKey]['Shipped (Vendor Cost)'] += shippedNum;
+			}
+		}
+
+		// Convert Sets to counts and format result
+		const result = Object.values(retailerGroups).map(group => ({
+			Retailer: group.Retailer,
+			Retailer_Area_Count: group.Retailer_Area_Count.size,
+			SKU_Count: group.SKU_Count.size,
+			'Ordered (Vendor Cost)': group['Ordered (Vendor Cost)'],
+			'Shipped (Vendor Cost)': group['Shipped (Vendor Cost)'],
+			'Difference in Cost': group['Shipped (Vendor Cost)'] - group['Ordered (Vendor Cost)']
+		}));
+
+		return res.status(200).json(result);
+	}
+	catch(error){
+		return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+	}
+}
+
+retailController.getKeheCSQuantityOrdered= async(req,res) =>{
+	try{
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 2) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
+		const keheCSPath = retailController.getKeheCSBlobPath();
+		console.log('KeheCSRetailerVendorByShipped blobPath:', keheCSPath);
+		let rows = await azureClient.fecthDatafromBlog(keheCSPath);
+		if (!Array.isArray(rows)) rows = [];
+
+		// Apply filters if provided
+		rows = applyQueryFilters(rows, req.query || {}, CS_FILTER_MAPPINGS);
+
+		// Group by Retailer and aggregate metrics
+		const retailerGroups = {};
+
+		for (const row of rows) {
+			const flat = flattenObject(row);
+
+			// Get Retailer with possible key variations
+			const retailer = getValueByPossibleKeys(flat, [
+				'Retailer',
+				'retailer'
+			]);
+
+			// Skip if retailer is missing
+			if (!retailer || retailer === null || retailer === undefined || String(retailer).trim() === '') {
+				continue;
+			}
+
+			const retailerKey = String(retailer).trim();
+
+			// Initialize retailer group if not exists
+			if (!retailerGroups[retailerKey]) {
+				retailerGroups[retailerKey] = {
+					Retailer: retailerKey,
+					Retailer_Area_Count: new Set(),
+					SKU_Count: new Set(),
+					'Ordered (Quantity)': 0,
+					'Shipped (Quantity)': 0
+				};
+			}
+
+			// Get Retailer Area with possible key variations
+			const retailerArea = getValueByPossibleKeys(flat, [
+				'Retailer Area',
+			]);
+			if (retailerArea !== null && retailerArea !== undefined && String(retailerArea).trim() !== '') {
+				retailerGroups[retailerKey].Retailer_Area_Count.add(String(retailerArea).trim());
+			}
+
+			// Get SKU with possible key variations
+			const sku = getValueByPossibleKeys(flat, [
+				'SKU',
+				'sku'
+			]);
+			if (sku !== null && sku !== undefined && String(sku).trim() !== '') {
+				retailerGroups[retailerKey].SKU_Count.add(String(sku).trim());
+			}
+
+			// Get Ordered (Vendor Cost) with possible key variations
+			const orderedVendorCost = getValueByPossibleKeys(flat, [
+				'Ordered (Quantity)',
+			]);
+			const orderedNum = toNumber(orderedVendorCost);
+			if (Number.isFinite(orderedNum)) {
+				retailerGroups[retailerKey]['Ordered (Quantity)'] += orderedNum;
+			}
+
+			// Get Shipped (Vendor Cost) with possible key variations
+			const shippedVendorCost = getValueByPossibleKeys(flat, [
+				'Shipped (Quantity)',
+			]);
+			const shippedNum = toNumber(shippedVendorCost);
+			if (Number.isFinite(shippedNum)) {
+				retailerGroups[retailerKey]['Shipped (Quantity)'] += shippedNum;
+			}
+		}
+
+		// Convert Sets to counts and format result
+		const result = Object.values(retailerGroups).map(group => ({
+			Retailer: group.Retailer,
+			Retailer_Area_Count: group.Retailer_Area_Count.size,
+			SKU_Count: group.SKU_Count.size,
+			'Ordered (Quantity)': group['Ordered (Quantity)'],
+			'Shipped (Quantity)': group['Shipped (Quantity)'],
+			'Difference in Cost': group['Shipped (Quantity)'] - group['Ordered (Quantity)']
+		}));
+
+		return res.status(200).json(result);
+	}
+	catch(error){
+		return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+	}
+}
+
+retailController.getKeheCSMetricTableData = async(req,res) =>{
+	try {
+		const dId = req.departmentId;
+		if (dId !== 1 && dId !== 2) {
+			return res.status(403).json({ message: 'Forbidden: insufficient department access' });
+		}
+		const keheCSPath = retailController.getKeheCSBlobPath();
+		console.log('KeheCSMetricTableData blobPath:', keheCSPath);
+		let rows = await azureClient.fecthDatafromBlog(keheCSPath);
+		if (!Array.isArray(rows)) rows = [];
+		return res.status(200).json(rows);
+	} catch (error) {
+		return res.status(500).json({ message: 'Error fetching data from Azure Blob', error: error.message });
+	}
 }
 
 export default retailController;

@@ -1,3 +1,5 @@
+//This route only has routes for Kehe
+
 import express from 'express';
 import retailController from '../Controllers/retailController.js';
 const router = express.Router();
@@ -199,5 +201,80 @@ router.get('/kehe-ksolve/metric-table-data', retailController.getKeheKSolveMetri
  *         description: Internal server error
  */
 router.get('/kehe-ksolve/filters', retailController.getKeheKSolveFilters);
+
+/**
+ * @swagger
+ * /retail/kehe-cs/filters:
+ *   get:
+ *     tags:
+ *       - Retail
+ *     summary: Get Kehe CS filters
+ *     responses:
+ *       200:
+ *         description: Filters fetched successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/kehe-cs/filters', retailController.getKeheCSFilters);
+
+/**
+ * @swagger
+ * /retail/kehe-cs/metric-card-data:
+ *   get:
+ *     tags:
+ *       - Retail
+ *     summary: Get Kehe CS metric card data
+ *     responses:
+ *       200:
+ *         description: Metric card data fetched successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/kehe-cs/metric-card-data', retailController.getKeheCSMetricCardData);
+
+/**
+ * @swagger
+ * /retail/kehe-cs/retailer-vendor-by-shipped:
+ *   get:
+ *     tags:
+ *       - Retail
+ *     summary: Get Kehe CS retailer vendor by shipped
+ *     responses:
+ *       200:
+ *         description: Retailer vendor by shipped fetched successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/kehe-cs/retailer-vendor-by-shipped', retailController.getKeheCSRetailerVendorByShipped);
+
+/**
+ * @swagger
+ * /retail/kehe-cs/quantity-ordered:
+ *   get:
+ *     tags:
+ *       - Retail
+ *     summary: Get Kehe CS quantity ordered
+ *     responses:
+ *       200:
+ *         description: Quantity ordered fetched successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/kehe-cs/quantity-ordered', retailController.getKeheCSQuantityOrdered);
+
+/**
+ * @swagger
+ * /retail/kehe-cs/metric-table-data:
+ *   get:
+ *     tags:
+ *       - Retail
+ *     summary: Get Kehe CS metric table data
+ *     responses:
+ *       200:
+ *         description: Metric table data fetched successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/kehe-cs/metric-table-data', retailController.getKeheCSMetricTableData);
 
 export default router;
