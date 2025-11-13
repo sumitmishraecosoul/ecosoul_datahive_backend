@@ -134,16 +134,30 @@ function mapRowToFrontend(row) {
 }
 
 function applyBasicFilters(rows, query) {
-	const hasFilters = query && Object.values(query).some(v => v !== undefined && v !== null && String(v).trim() !== '');
+	const hasFilters = query && Object.values(query).some(v => {
+		if (Array.isArray(v)) return v.length > 0;
+		return v !== undefined && v !== null && String(v).trim() !== '';
+	});
 	if (!hasFilters) return rows;
-	const skuFilter = query.sku ? String(query.sku).split(',').map(s => s.trim()) : undefined;
-	const channelFilter = query.channel ? String(query.channel).split(',').map(s => s.trim()) : undefined;
+	
+	// Handle arrays, single values, and comma-separated strings
+	const normalizeFilter = (param) => {
+		if (!param) return undefined;
+		if (Array.isArray(param)) {
+			return param.map(s => String(s).trim()).filter(Boolean);
+		}
+		const str = String(param).trim();
+		return str ? str.split(',').map(s => s.trim()).filter(Boolean) : undefined;
+	};
+	
+	const skuFilter = normalizeFilter(query.sku);
+	const channelFilter = normalizeFilter(query.channel);
 	return rows.filter(r => {
 		const flat = flattenObject(r);
 		const sku = String(getValueByPossibleKeys(flat, ['SKU', 'sku', 'Sku']) ?? '');
 		const channel = String(getValueByPossibleKeys(flat, ['Channel', 'channel']) ?? '');
-		if (skuFilter && !skuFilter.includes(sku)) return false;
-		if (channelFilter && !channelFilter.includes(channel)) return false;
+		if (skuFilter && skuFilter.length > 0 && !skuFilter.includes(sku)) return false;
+		if (channelFilter && channelFilter.length > 0 && !channelFilter.includes(channel)) return false;
 		return true;
 	});
 }

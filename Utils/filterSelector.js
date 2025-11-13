@@ -68,7 +68,11 @@ export function applyFiltersByMappings(rows, query, mappings) {
 
 	const activeKeys = Object.keys(mappings).filter((qk) => {
 		const raw = query[qk];
-		return !(raw === undefined || raw === null || String(raw).trim() === '');
+		if (raw === undefined || raw === null) return false;
+		// Handle arrays
+		if (Array.isArray(raw)) return raw.length > 0;
+		// Handle strings and other types
+		return String(raw).trim() !== '';
 	});
 	if (activeKeys.length === 0) return rows;
 
@@ -76,7 +80,14 @@ export function applyFiltersByMappings(rows, query, mappings) {
         const flat = _flattenObject(row);
         for (const queryKey of activeKeys) {
             const raw = query[queryKey];
-            const allowed = String(raw).split(',').map(s => s.trim()).filter(Boolean);
+            let allowed = [];
+            // Handle arrays directly
+            if (Array.isArray(raw)) {
+                allowed = raw.map(s => String(s).trim()).filter(Boolean);
+            } else if (raw !== undefined && raw !== null) {
+                // Handle single values and comma-separated strings
+                allowed = String(raw).split(',').map(s => s.trim()).filter(Boolean);
+            }
             if (allowed.length === 0) continue;
             const possibleColumns = mappings[queryKey] || [];
             const value = _getValueByPossibleKeys(flat, possibleColumns);

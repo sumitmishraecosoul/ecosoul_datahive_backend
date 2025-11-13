@@ -93,8 +93,15 @@ function computeCurrentMonthYear() {
 }
 
 function toSet(param) {
-	if (!param || !String(param).trim()) return undefined;
-	return new Set(String(param).split(',').map(s => s.trim()).filter(Boolean));
+	if (!param) return undefined;
+	// Handle arrays directly
+	if (Array.isArray(param)) {
+		return new Set(param.map(s => String(s).trim()).filter(Boolean));
+	}
+	// Handle single values and comma-separated strings
+	const str = String(param).trim();
+	if (!str) return undefined;
+	return new Set(str.split(',').map(s => s.trim()).filter(Boolean));
 }
 
 // Apply common filters across Ecommerce endpoints
