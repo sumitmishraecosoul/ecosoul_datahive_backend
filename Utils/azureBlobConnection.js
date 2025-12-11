@@ -60,34 +60,4 @@ const fecthDatafromBlog = async(blobPath) =>{
 
 }
 
-// helper: parse a single blob; a fresh csv() instance is used per file
-const parseCsvBlob = async (containerClient, name) => {
-	const blobClient = containerClient.getBlobClient(name);
-	const download = await blobClient.download();
-	console.log('Fetching blob file from Azure:', blobClient.name || name);
-
-	return new Promise((resolve, reject) => {
-		const rows = [];
-		download.readableStreamBody
-		.pipe(csv())
-		.on("data", (row) => rows.push(row))
-		.on("end", () => resolve({ blobName: name, rows }))
-		.on("error", reject);
-	});
-};
-
-// fetch two CSV files in parallel, each with its own csv() instance
-const fetchTwoCsvFiles = async (blobName1, blobName2) => {
-	const blobServiceClient = BlobServiceClient.fromConnectionString(conn);
-	const containerClient = blobServiceClient.getContainerClient(containerName);
-
-	const [res1, res2] = await Promise.all([
-		parseCsvBlob(containerClient, blobName1),
-		parseCsvBlob(containerClient, blobName2)
-	]);
-
-	return [res1, res2];
-};
-
-export { fetchTwoCsvFiles };
-export default { fecthDatafromBlog, fetchTwoCsvFiles };
+export default { fecthDatafromBlog };

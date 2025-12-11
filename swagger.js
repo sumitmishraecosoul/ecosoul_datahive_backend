@@ -28,14 +28,6 @@ const options = {
 
 const swaggerSpec = swaggerJSDoc(options);
 
+
 // Backward-compatible named exports used by existing app.js
 export { swaggerUi, swaggerSpec };
-
-// Default export: setup function, following the reference pattern
-const setupSwagger = (app) => {
-    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-};
-
-export default setupSwagger;
-
-

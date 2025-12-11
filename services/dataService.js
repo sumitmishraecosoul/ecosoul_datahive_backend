@@ -163,12 +163,6 @@ function getDemandProjections(query = {}) {
     }));
 }
 
-// Data getters
-function getFilterOptions() {
-    const data = loadData();
-    return data.filters;
-}
-
 // Inventory
 async function getInventoryMetrics() {
     // Prefer live data from Azure blob if available
@@ -287,8 +281,6 @@ export {
     paginate,
     sort,
     parseCsvParamToArray,
-    // filters
-    getFilterOptions,
     // inventory
     getInventoryMetrics,
     getInventoryTimeseries,

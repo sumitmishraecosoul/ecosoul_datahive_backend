@@ -77,14 +77,6 @@ function getValueByPossibleKeys(flatRow, keys) {
 // ============
 // Filter helpers
 // ============
-function computeDefaultPrevMonthYear() {
-	const now = new Date();
-	const cur = new Date(now.getFullYear(), now.getMonth(), 1);
-	const month = cur.getMonth() + 1;
-	const paddedMonth = month < 10 ? `0${month}` : `${month}`;
-	return `${cur.getFullYear()}-${paddedMonth}`;
-}
-
 function toSet(param) {
 	if (!param) return undefined;
 	// Handle arrays directly

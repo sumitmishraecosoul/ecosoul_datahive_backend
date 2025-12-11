@@ -67,13 +67,6 @@ function toNumber(value) {
 	return Number.isFinite(n) ? n : NaN;
 }
 
-function getValueByPossibleKeys(flatRow, keys) {
-	for (const k of keys) {
-		if (Object.prototype.hasOwnProperty.call(flatRow, k)) return flatRow[k];
-	}
-	return undefined;
-}
-
 // ============
 // Filter helpers
 // ============
